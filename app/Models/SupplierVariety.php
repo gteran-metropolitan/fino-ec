@@ -5,54 +5,57 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class ProductEntry extends Model
+class SupplierVariety extends Model
 {
     use HasFactory;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<string>
+     */
     protected $fillable = [
-        'product_entry_group_id',
+        'supplier_id',
         'species_id',
         'variety_id',
-        'quantity',
+        'is_active',
     ];
 
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
-            'quantity' => 'integer',
+            'is_active' => 'boolean',
         ];
     }
 
     /**
-     * Relación con el grupo de entrada.
-     */
-    public function group(): BelongsTo
-    {
-        return $this->belongsTo(ProductEntryGroup::class, 'product_entry_group_id');
-    }
-
-    /**
-     * Relación con el proveedor a través del grupo.
+     * Relación con el proveedor.
      */
     public function supplier(): BelongsTo
     {
-        return $this->group->supplier();
+        return $this->belongsTo(Supplier::class);
     }
 
+    /**
+     * Relación con la especie.
+     */
     public function species(): BelongsTo
     {
         return $this->belongsTo(Species::class);
     }
 
+    /**
+     * Relación con la variedad.
+     */
     public function variety(): BelongsTo
     {
         return $this->belongsTo(Variety::class);
     }
-
-    public function stemClassification(): HasOne
-    {
-        return $this->hasOne(StemClassification::class);
-    }
 }
+

@@ -20,6 +20,12 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 
+interface SupplierVariety {
+    id: number;
+    species: { id: number; name: string };
+    variety: { id: number; name: string };
+}
+
 interface Supplier {
     id: number;
     name: string;
@@ -29,6 +35,7 @@ interface Supplier {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    supplier_varieties?: SupplierVariety[];
 }
 
 interface PaginatedSuppliers {
@@ -107,8 +114,8 @@ export default function SuppliersIndex({ suppliers }: Props) {
                                 <TableHead>RUC</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Celular</TableHead>
+                                <TableHead>Variedades</TableHead>
                                 <TableHead>Estado</TableHead>
-                                <TableHead>Creado</TableHead>
                                 <TableHead className="w-20">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -116,7 +123,7 @@ export default function SuppliersIndex({ suppliers }: Props) {
                             {suppliers.data.length === 0 ? (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={7}
+                                        colSpan={8}
                                         className="py-8 text-center text-muted-foreground"
                                     >
                                         No hay proveedores registrados
@@ -130,12 +137,27 @@ export default function SuppliersIndex({ suppliers }: Props) {
                                         <TableCell>{supplier.email}</TableCell>
                                         <TableCell>{supplier.phone}</TableCell>
                                         <TableCell>
+                                            {supplier.supplier_varieties && supplier.supplier_varieties.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1 max-w-xs">
+                                                    {supplier.supplier_varieties.slice(0, 3).map((sv) => (
+                                                        <Badge key={sv.id} variant="secondary" className="text-xs">
+                                                            {sv.species.name} - {sv.variety.name}
+                                                        </Badge>
+                                                    ))}
+                                                    {supplier.supplier_varieties.length > 3 && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            +{supplier.supplier_varieties.length - 3} más
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground text-sm">Sin variedades</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
                                             <Badge variant={supplier.is_active ? 'default' : 'outline'}>
                                                 {supplier.is_active ? 'Activo' : 'Inactivo'}
                                             </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            {new Date(supplier.created_at).toLocaleDateString('es-ES')}
                                         </TableCell>
                                         <TableCell>
                                             <DropdownMenu>

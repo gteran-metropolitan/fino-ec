@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useEffect, useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -15,9 +16,22 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 
+interface SupplierVariety {
+    id: number;
+    species_id: number;
+    species_name: string;
+    variety_id: number;
+    variety_name: string;
+}
+
 interface Supplier {
     id: number;
     name: string;
+    supplier_varieties?: {
+        id: number;
+        species: { id: number; name: string };
+        variety: { id: number; name: string };
+    }[];
 }
 
 interface Species {
@@ -29,6 +43,12 @@ interface Variety {
     id: number;
     name: string;
     species_id: number;
+}
+
+interface EntryItem {
+    species_name: string;
+    variety_name: string;
+    quantity: string;
 }
 
 interface Props {
@@ -53,10 +73,14 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function CreateProductEntry({ suppliers, speciesList, varietiesList }: Props) {
-    const [speciesSuggestions, setSpeciesSuggestions] = useState<Species[]>([]);
-    const [varietySuggestions, setVarietySuggestions] = useState<Variety[]>([]);
-    const [showSpeciesSuggestions, setShowSpeciesSuggestions] = useState(false);
-    const [showVarietySuggestions, setShowVarietySuggestions] = useState(false);
+    const [entries, setEntries] = useState<EntryItem[]>([
+        { species_name: '', variety_name: '', quantity: '' }
+    ]);
+    const [supplierVarieties, setSupplierVarieties] = useState<SupplierVariety[]>([]);
+    const [speciesSuggestions, setSpeciesSuggestions] = useState<{ [key: number]: Species[] }>({});
+    const [varietySuggestions, setVarietySuggestions] = useState<{ [key: number]: Variety[] }>({});
+    const [showSpeciesSuggestions, setShowSpeciesSuggestions] = useState<{ [key: number]: boolean }>({});
+    const [showVarietySuggestions, setShowVarietySuggestions] = useState<{ [key: number]: boolean }>({});
 
     // Obtener fecha y hora de Ecuador (UTC-5)
     const getEcuadorDateTime = () => {
@@ -74,56 +98,111 @@ export default function CreateProductEntry({ suppliers, speciesList, varietiesLi
 
     const { data, setData, post, processing, errors } = useForm({
         supplier_id: '',
-        species_name: '',
-        variety_name: '',
         delivery_date: ecuadorNow.date,
         delivery_time: ecuadorNow.time,
-        quantity: '',
+        entries: entries,
     });
 
-    const handleSpeciesChange = (value: string) => {
-        setData('species_name', value);
+    // Actualizar entries en el form cuando cambian
+    useEffect(() => {
+        setData('entries', entries);
+    }, [entries]);
+
+    // Cargar variedades del proveedor cuando se selecciona
+    useEffect(() => {
+        if (data.supplier_id) {
+            const supplier = suppliers.find(s => s.id.toString() === data.supplier_id);
+            if (supplier?.supplier_varieties) {
+                const varieties = supplier.supplier_varieties.map(sv => ({
+                    id: sv.id,
+                    species_id: sv.species.id,
+                    species_name: sv.species.name,
+                    variety_id: sv.variety.id,
+                    variety_name: sv.variety.name,
+                }));
+                setSupplierVarieties(varieties);
+            } else {
+                setSupplierVarieties([]);
+            }
+        } else {
+            setSupplierVarieties([]);
+        }
+    }, [data.supplier_id, suppliers]);
+
+    const addEntry = () => {
+        setEntries([...entries, { species_name: '', variety_name: '', quantity: '' }]);
+    };
+
+    const removeEntry = (index: number) => {
+        if (entries.length > 1) {
+            setEntries(entries.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateEntry = (index: number, field: keyof EntryItem, value: string) => {
+        const newEntries = [...entries];
+        newEntries[index] = { ...newEntries[index], [field]: value };
+        setEntries(newEntries);
+    };
+
+    const handleSpeciesChange = (index: number, value: string) => {
+        updateEntry(index, 'species_name', value);
         if (value.length > 0) {
             const filtered = speciesList.filter((s) =>
                 s.name.toLowerCase().includes(value.toLowerCase())
             );
-            setSpeciesSuggestions(filtered);
-            setShowSpeciesSuggestions(filtered.length > 0);
+            setSpeciesSuggestions({ ...speciesSuggestions, [index]: filtered });
+            setShowSpeciesSuggestions({ ...showSpeciesSuggestions, [index]: filtered.length > 0 });
         } else {
-            setSpeciesSuggestions([]);
-            setShowSpeciesSuggestions(false);
+            setSpeciesSuggestions({ ...speciesSuggestions, [index]: [] });
+            setShowSpeciesSuggestions({ ...showSpeciesSuggestions, [index]: false });
         }
     };
 
-    const handleVarietyChange = (value: string) => {
-        setData('variety_name', value);
+    const handleVarietyChange = (index: number, value: string) => {
+        updateEntry(index, 'variety_name', value);
         if (value.length > 0) {
             const filtered = varietiesList.filter((v) =>
                 v.name.toLowerCase().includes(value.toLowerCase())
             );
-            setVarietySuggestions(filtered);
-            setShowVarietySuggestions(filtered.length > 0);
+            setVarietySuggestions({ ...varietySuggestions, [index]: filtered });
+            setShowVarietySuggestions({ ...showVarietySuggestions, [index]: filtered.length > 0 });
         } else {
-            setVarietySuggestions([]);
-            setShowVarietySuggestions(false);
+            setVarietySuggestions({ ...varietySuggestions, [index]: [] });
+            setShowVarietySuggestions({ ...showVarietySuggestions, [index]: false });
         }
     };
 
-    const selectSpecies = (species: Species) => {
-        setData('species_name', species.name);
-        setShowSpeciesSuggestions(false);
+    const selectSpecies = (index: number, species: Species) => {
+        updateEntry(index, 'species_name', species.name);
+        setShowSpeciesSuggestions({ ...showSpeciesSuggestions, [index]: false });
     };
 
-    const selectVariety = (variety: Variety) => {
-        setData('variety_name', variety.name);
+    const selectVariety = (index: number, variety: Variety) => {
+        const newEntries = [...entries];
+        newEntries[index] = {
+            ...newEntries[index],
+            variety_name: variety.name,
+        };
         // Auto-llenar la especie si está vacía
-        if (!data.species_name) {
+        if (!newEntries[index].species_name) {
             const species = speciesList.find((s) => s.id === variety.species_id);
             if (species) {
-                setData('species_name', species.name);
+                newEntries[index].species_name = species.name;
             }
         }
-        setShowVarietySuggestions(false);
+        setEntries(newEntries);
+        setShowVarietySuggestions({ ...showVarietySuggestions, [index]: false });
+    };
+
+    const selectSupplierVariety = (index: number, sv: SupplierVariety) => {
+        const newEntries = [...entries];
+        newEntries[index] = {
+            ...newEntries[index],
+            species_name: sv.species_name,
+            variety_name: sv.variety_name,
+        };
+        setEntries(newEntries);
     };
 
     const submit: FormEventHandler = (e) => {
@@ -138,12 +217,13 @@ export default function CreateProductEntry({ suppliers, speciesList, varietiesLi
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">Nuevo Ingreso</h1>
                     <p className="text-sm text-muted-foreground">
-                        Registra una nueva entrega de producto
+                        Registra una nueva entrega de producto con múltiples variedades
                     </p>
                 </div>
 
                 <form onSubmit={submit} className="space-y-6">
-                    <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Datos del proveedor y fecha */}
+                    <div className="grid gap-6 lg:grid-cols-3">
                         <div className="space-y-2">
                             <Label htmlFor="supplier_id">Proveedor</Label>
                             <Select
@@ -162,20 +242,6 @@ export default function CreateProductEntry({ suppliers, speciesList, varietiesLi
                                 </SelectContent>
                             </Select>
                             <InputError message={errors.supplier_id} />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="quantity">Cantidad</Label>
-                            <Input
-                                id="quantity"
-                                type="number"
-                                min="1"
-                                value={data.quantity}
-                                onChange={(e) => setData('quantity', e.target.value)}
-                                required
-                                placeholder="Ingresa la cantidad"
-                            />
-                            <InputError message={errors.quantity} />
                         </div>
 
                         <div className="space-y-2">
@@ -201,64 +267,172 @@ export default function CreateProductEntry({ suppliers, speciesList, varietiesLi
                             />
                             <InputError message={errors.delivery_time} />
                         </div>
+                    </div>
 
-                        <div className="space-y-2 relative">
-                            <Label htmlFor="species_name">Especie</Label>
-                            <Input
-                                id="species_name"
-                                type="text"
-                                value={data.species_name}
-                                onChange={(e) => handleSpeciesChange(e.target.value)}
-                                onFocus={() => data.species_name && handleSpeciesChange(data.species_name)}
-                                onBlur={() => setTimeout(() => setShowSpeciesSuggestions(false), 200)}
-                                placeholder="Ej: Rosa, Clavel, Lirio..."
-                                autoComplete="off"
-                            />
-                            {showSpeciesSuggestions && (
-                                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-auto">
-                                    {speciesSuggestions.map((species) => (
-                                        <button
-                                            key={species.id}
-                                            type="button"
-                                            className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                                            onMouseDown={() => selectSpecies(species)}
-                                        >
-                                            {species.name}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                            <InputError message={errors.species_name} />
+                    {/* Variedades del proveedor seleccionado */}
+                    {supplierVarieties.length > 0 && (
+                        <div className="rounded-lg border p-4 bg-muted/30">
+                            <Label className="text-sm font-medium mb-2 block">
+                                Variedades registradas de este proveedor (clic para agregar):
+                            </Label>
+                            <div className="flex flex-wrap gap-2">
+                                {supplierVarieties.map((sv) => (
+                                    <Button
+                                        key={sv.id}
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            // Buscar si hay una entrada vacía, si no agregar una nueva
+                                            const emptyIndex = entries.findIndex(
+                                                e => !e.species_name && !e.variety_name
+                                            );
+                                            if (emptyIndex >= 0) {
+                                                selectSupplierVariety(emptyIndex, sv);
+                                            } else {
+                                                setEntries([
+                                                    ...entries,
+                                                    {
+                                                        species_name: sv.species_name,
+                                                        variety_name: sv.variety_name,
+                                                        quantity: '',
+                                                    },
+                                                ]);
+                                            }
+                                        }}
+                                    >
+                                        {sv.species_name} - {sv.variety_name}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Entradas de productos */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-base font-semibold">Productos a ingresar</Label>
+                            <Button type="button" variant="outline" size="sm" onClick={addEntry}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Agregar Variedad
+                            </Button>
                         </div>
 
-                        <div className="space-y-2 relative">
-                            <Label htmlFor="variety_name">Variedad</Label>
-                            <Input
-                                id="variety_name"
-                                type="text"
-                                value={data.variety_name}
-                                onChange={(e) => handleVarietyChange(e.target.value)}
-                                onFocus={() => data.variety_name && handleVarietyChange(data.variety_name)}
-                                onBlur={() => setTimeout(() => setShowVarietySuggestions(false), 200)}
-                                placeholder="Ej: Explorer, Pink Floyd..."
-                                autoComplete="off"
-                            />
-                            {showVarietySuggestions && (
-                                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-auto">
-                                    {varietySuggestions.map((variety) => (
-                                        <button
-                                            key={variety.id}
-                                            type="button"
-                                            className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                                            onMouseDown={() => selectVariety(variety)}
-                                        >
-                                            {variety.name}
-                                        </button>
-                                    ))}
+                        {entries.map((entry, index) => (
+                            <div
+                                key={index}
+                                className="grid gap-4 lg:grid-cols-4 items-end p-4 rounded-lg border bg-card"
+                            >
+                                <div className="space-y-2 relative">
+                                    <Label htmlFor={`species_${index}`}>Especie</Label>
+                                    <Input
+                                        id={`species_${index}`}
+                                        type="text"
+                                        value={entry.species_name}
+                                        onChange={(e) => handleSpeciesChange(index, e.target.value)}
+                                        onFocus={() =>
+                                            entry.species_name && handleSpeciesChange(index, entry.species_name)
+                                        }
+                                        onBlur={() =>
+                                            setTimeout(
+                                                () =>
+                                                    setShowSpeciesSuggestions({
+                                                        ...showSpeciesSuggestions,
+                                                        [index]: false,
+                                                    }),
+                                                200
+                                            )
+                                        }
+                                        placeholder="Ej: Rosa, Clavel..."
+                                        autoComplete="off"
+                                    />
+                                    {showSpeciesSuggestions[index] && speciesSuggestions[index]?.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-auto">
+                                            {speciesSuggestions[index].map((species) => (
+                                                <button
+                                                    key={species.id}
+                                                    type="button"
+                                                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                                                    onMouseDown={() => selectSpecies(index, species)}
+                                                >
+                                                    {species.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <InputError message={(errors as any)[`entries.${index}.species_name`]} />
                                 </div>
-                            )}
-                            <InputError message={errors.variety_name} />
-                        </div>
+
+                                <div className="space-y-2 relative">
+                                    <Label htmlFor={`variety_${index}`}>Variedad</Label>
+                                    <Input
+                                        id={`variety_${index}`}
+                                        type="text"
+                                        value={entry.variety_name}
+                                        onChange={(e) => handleVarietyChange(index, e.target.value)}
+                                        onFocus={() =>
+                                            entry.variety_name && handleVarietyChange(index, entry.variety_name)
+                                        }
+                                        onBlur={() =>
+                                            setTimeout(
+                                                () =>
+                                                    setShowVarietySuggestions({
+                                                        ...showVarietySuggestions,
+                                                        [index]: false,
+                                                    }),
+                                                200
+                                            )
+                                        }
+                                        placeholder="Ej: Explorer, Pink Floyd..."
+                                        autoComplete="off"
+                                    />
+                                    {showVarietySuggestions[index] && varietySuggestions[index]?.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-auto">
+                                            {varietySuggestions[index].map((variety) => (
+                                                <button
+                                                    key={variety.id}
+                                                    type="button"
+                                                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                                                    onMouseDown={() => selectVariety(index, variety)}
+                                                >
+                                                    {variety.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <InputError message={(errors as any)[`entries.${index}.variety_name`]} />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor={`quantity_${index}`}>Cantidad</Label>
+                                    <Input
+                                        id={`quantity_${index}`}
+                                        type="number"
+                                        min="1"
+                                        value={entry.quantity}
+                                        onChange={(e) => updateEntry(index, 'quantity', e.target.value)}
+                                        required
+                                        placeholder="Cantidad"
+                                    />
+                                    <InputError message={(errors as any)[`entries.${index}.quantity`]} />
+                                </div>
+
+                                <div>
+                                    {entries.length > 1 && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeEntry(index)}
+                                            className="text-destructive hover:text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        <InputError message={errors.entries} />
                     </div>
 
                     <div className="flex justify-end gap-4 pt-4 border-t">
