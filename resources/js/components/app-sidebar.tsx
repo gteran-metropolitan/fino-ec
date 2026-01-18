@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Truck, Users } from 'lucide-react';
+import { ClipboardList, Flower2, LayoutGrid, Package, Truck, Users } from 'lucide-react';
 
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -25,7 +25,7 @@ export function AppSidebar() {
 
     const mainNavItems: NavItem[] = [
         {
-            title: 'Dashboard',
+            title: 'Panel',
             href: dashboard(),
             icon: LayoutGrid,
         },
@@ -33,6 +33,21 @@ export function AppSidebar() {
             title: 'Proveedores',
             href: '/suppliers',
             icon: Truck,
+        },
+        {
+            title: 'Ingreso de Productos',
+            href: '/product-entries',
+            icon: ClipboardList,
+        },
+        {
+            title: 'Exportable',
+            href: '/classifications',
+            icon: Package,
+        },
+        {
+            title: 'Flor Local',
+            href: '/local-flowers',
+            icon: Flower2,
         },
         ...(can?.manage_users
             ? [
