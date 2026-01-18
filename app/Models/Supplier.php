@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Supplier extends Model
 {
@@ -32,6 +33,30 @@ class Supplier extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Relación con las variedades del proveedor.
+     */
+    public function supplierVarieties(): HasMany
+    {
+        return $this->hasMany(SupplierVariety::class);
+    }
+
+    /**
+     * Relación con las variedades activas del proveedor.
+     */
+    public function activeSupplierVarieties(): HasMany
+    {
+        return $this->hasMany(SupplierVariety::class)->where('is_active', true);
+    }
+
+    /**
+     * Relación con los grupos de entrada de productos.
+     */
+    public function productEntryGroups(): HasMany
+    {
+        return $this->hasMany(ProductEntryGroup::class);
     }
 }
 

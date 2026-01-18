@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('product_entries', function (Blueprint $table) {
+        Schema::create('supplier_varieties', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_entry_group_id')->constrained('product_entry_groups')->onDelete('cascade');
+            $table->foreignId('supplier_id')->constrained('suppliers')->onDelete('cascade');
             $table->foreignId('species_id')->constrained('species')->onDelete('cascade');
             $table->foreignId('variety_id')->constrained('varieties')->onDelete('cascade');
-            $table->integer('quantity');
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->unique(['supplier_id', 'variety_id']);
         });
     }
 
@@ -26,6 +28,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('product_entries');
+        Schema::dropIfExists('supplier_varieties');
     }
 };
+

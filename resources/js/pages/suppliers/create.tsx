@@ -1,7 +1,9 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { Plus, Trash2, X } from 'lucide-react';
+import { FormEventHandler, useEffect, useState } from 'react';
 
 import InputError from '@/components/input-error';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -9,9 +11,36 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 
+interface Species {
+    id: number;
+    name: string;
+}
+
+interface Variety {
+    id: number;
+    name: string;
+    species_id: number;
+}
+
+interface VarietyItem {
+    species_name: string;
+    variety_name: string;
+}
+
+// Estructura agrupada por especie
+interface SpeciesGroup {
+    species_name: string;
+    varieties: string[];
+}
+
+interface Props {
+    speciesList: Species[];
+    varietiesList: Variety[];
+}
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Panel',
         href: '/dashboard',
     },
     {
@@ -24,16 +53,43 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function CreateSupplier() {
+export default function CreateSupplier({ speciesList, varietiesList }: Props) {
+    // Estado para grupos de especies con sus variedades
+    const [speciesGroups, setSpeciesGroups] = useState<SpeciesGroup[]>([]);
+
+    // Estados para autocompletado
+    const [speciesSuggestions, setSpeciesSuggestions] = useState<{ [key: number]: Species[] }>({});
+    const [varietySuggestions, setVarietySuggestions] = useState<{ [key: string]: Variety[] }>({});
+    const [showSpeciesSuggestions, setShowSpeciesSuggestions] = useState<{ [key: number]: boolean }>({});
+    const [showVarietySuggestions, setShowVarietySuggestions] = useState<{ [key: string]: boolean }>({});
+
+    // Input temporal para nueva variedad
+    const [newVarietyInput, setNewVarietyInput] = useState<{ [key: number]: string }>({});
+
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         email: '',
         phone: '',
         ruc: '',
         is_active: true,
+        varieties: [] as VarietyItem[],
     });
 
     const [rucError, setRucError] = useState<string | undefined>(undefined);
+
+    // Convertir speciesGroups a formato plano para enviar al backend
+    useEffect(() => {
+        const flatVarieties: VarietyItem[] = [];
+        speciesGroups.forEach(group => {
+            group.varieties.forEach(varietyName => {
+                flatVarieties.push({
+                    species_name: group.species_name,
+                    variety_name: varietyName,
+                });
+            });
+        });
+        setData('varieties', flatVarieties);
+    }, [speciesGroups]);
 
     // Validar que solo contenga letras y espacios
     const handleNameChange = (value: string) => {
@@ -69,8 +125,106 @@ export default function CreateSupplier() {
         }
 
         post('/suppliers', {
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                setSpeciesGroups([]);
+            },
         });
+    };
+
+    // Agregar nuevo grupo de especie
+    const addSpeciesGroup = () => {
+        setSpeciesGroups([...speciesGroups, { species_name: '', varieties: [] }]);
+    };
+
+    // Eliminar grupo de especie
+    const removeSpeciesGroup = (index: number) => {
+        setSpeciesGroups(speciesGroups.filter((_, i) => i !== index));
+    };
+
+    // Actualizar nombre de especie
+    const updateSpeciesName = (index: number, value: string) => {
+        const newGroups = [...speciesGroups];
+        newGroups[index] = { ...newGroups[index], species_name: value };
+        setSpeciesGroups(newGroups);
+    };
+
+    // Manejar cambio en input de especie con autocompletado
+    const handleSpeciesChange = (index: number, value: string) => {
+        updateSpeciesName(index, value);
+        if (value.length > 0) {
+            const filtered = speciesList.filter((s) =>
+                s.name.toLowerCase().includes(value.toLowerCase())
+            );
+            setSpeciesSuggestions({ ...speciesSuggestions, [index]: filtered });
+            setShowSpeciesSuggestions({ ...showSpeciesSuggestions, [index]: filtered.length > 0 });
+        } else {
+            setShowSpeciesSuggestions({ ...showSpeciesSuggestions, [index]: false });
+        }
+    };
+
+    // Seleccionar especie de sugerencias
+    const selectSpecies = (index: number, species: Species) => {
+        updateSpeciesName(index, species.name);
+        setShowSpeciesSuggestions({ ...showSpeciesSuggestions, [index]: false });
+    };
+
+    // Manejar input de nueva variedad
+    const handleVarietyInputChange = (groupIndex: number, value: string) => {
+        setNewVarietyInput({ ...newVarietyInput, [groupIndex]: value });
+        const key = `${groupIndex}`;
+        if (value.length > 0) {
+            // Filtrar variedades que correspondan a la especie seleccionada
+            const speciesName = speciesGroups[groupIndex]?.species_name;
+            const species = speciesList.find(s => s.name.toLowerCase() === speciesName?.toLowerCase());
+
+            let filtered = varietiesList.filter((v) =>
+                v.name.toLowerCase().includes(value.toLowerCase())
+            );
+
+            // Si hay especie seleccionada, filtrar por ella
+            if (species) {
+                filtered = filtered.filter(v => v.species_id === species.id);
+            }
+
+            setVarietySuggestions({ ...varietySuggestions, [key]: filtered });
+            setShowVarietySuggestions({ ...showVarietySuggestions, [key]: filtered.length > 0 });
+        } else {
+            setShowVarietySuggestions({ ...showVarietySuggestions, [key]: false });
+        }
+    };
+
+    // Agregar variedad al grupo
+    const addVarietyToGroup = (groupIndex: number, varietyName: string) => {
+        if (!varietyName.trim()) return;
+
+        const newGroups = [...speciesGroups];
+        if (!newGroups[groupIndex].varieties.includes(varietyName.trim())) {
+            newGroups[groupIndex].varieties = [...newGroups[groupIndex].varieties, varietyName.trim()];
+            setSpeciesGroups(newGroups);
+        }
+        setNewVarietyInput({ ...newVarietyInput, [groupIndex]: '' });
+        setShowVarietySuggestions({ ...showVarietySuggestions, [`${groupIndex}`]: false });
+    };
+
+    // Eliminar variedad del grupo
+    const removeVarietyFromGroup = (groupIndex: number, varietyName: string) => {
+        const newGroups = [...speciesGroups];
+        newGroups[groupIndex].varieties = newGroups[groupIndex].varieties.filter(v => v !== varietyName);
+        setSpeciesGroups(newGroups);
+    };
+
+    // Seleccionar variedad de sugerencias
+    const selectVariety = (groupIndex: number, variety: Variety) => {
+        addVarietyToGroup(groupIndex, variety.name);
+
+        // Si la especie está vacía, auto-llenarla
+        if (!speciesGroups[groupIndex].species_name) {
+            const species = speciesList.find(s => s.id === variety.species_id);
+            if (species) {
+                updateSpeciesName(groupIndex, species.name);
+            }
+        }
     };
 
     return (
@@ -148,6 +302,148 @@ export default function CreateSupplier() {
                             />
                             <InputError message={errors.phone} />
                         </div>
+                    </div>
+
+                    {/* Sección de Especies y Variedades */}
+                    <div className="space-y-4 rounded-lg border p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <Label className="text-base font-semibold">Especies y Variedades que provee</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Selecciona una especie y agrega las variedades que el proveedor entrega
+                                </p>
+                            </div>
+                            <Button type="button" variant="outline" size="sm" onClick={addSpeciesGroup}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Agregar Especie
+                            </Button>
+                        </div>
+
+                        {speciesGroups.length === 0 ? (
+                            <div className="text-center py-6 text-muted-foreground border rounded-lg border-dashed">
+                                <p>No hay especies registradas</p>
+                                <p className="text-sm">Haz clic en "Agregar Especie" para comenzar</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {speciesGroups.map((group, groupIndex) => (
+                                    <div key={groupIndex} className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                                        <div className="flex items-start gap-4">
+                                            {/* Input de Especie */}
+                                            <div className="flex-1 space-y-2 relative">
+                                                <Label htmlFor={`species_${groupIndex}`}>Especie</Label>
+                                                <Input
+                                                    id={`species_${groupIndex}`}
+                                                    type="text"
+                                                    value={group.species_name}
+                                                    onChange={(e) => handleSpeciesChange(groupIndex, e.target.value)}
+                                                    onFocus={() => group.species_name && handleSpeciesChange(groupIndex, group.species_name)}
+                                                    onBlur={() => setTimeout(() => setShowSpeciesSuggestions({ ...showSpeciesSuggestions, [groupIndex]: false }), 200)}
+                                                    placeholder="Ej: Rosa, Clavel, Gypsophila..."
+                                                    autoComplete="off"
+                                                />
+                                                {showSpeciesSuggestions[groupIndex] && speciesSuggestions[groupIndex]?.length > 0 && (
+                                                    <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-32 overflow-auto">
+                                                        {speciesSuggestions[groupIndex].map((species) => (
+                                                            <button
+                                                                key={species.id}
+                                                                type="button"
+                                                                className="w-full px-3 py-2 text-left hover:bg-muted text-sm"
+                                                                onClick={() => selectSpecies(groupIndex, species)}
+                                                            >
+                                                                {species.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Botón eliminar especie */}
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => removeSpeciesGroup(groupIndex)}
+                                                className="text-destructive hover:text-destructive mt-8"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+
+                                        {/* Variedades */}
+                                        <div className="space-y-2 pl-4 border-l-2 border-muted-foreground/20">
+                                            <Label className="text-sm">Variedades de {group.species_name || 'esta especie'}</Label>
+
+                                            {/* Variedades agregadas */}
+                                            {group.varieties.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 mb-2">
+                                                    {group.varieties.map((varietyName, vIndex) => (
+                                                        <Badge key={vIndex} variant="secondary" className="gap-1 pr-1">
+                                                            {varietyName}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeVarietyFromGroup(groupIndex, varietyName)}
+                                                                className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Input para agregar variedad */}
+                                            <div className="flex gap-2 relative">
+                                                <div className="flex-1 relative">
+                                                    <Input
+                                                        type="text"
+                                                        value={newVarietyInput[groupIndex] || ''}
+                                                        onChange={(e) => handleVarietyInputChange(groupIndex, e.target.value)}
+                                                        onFocus={() => newVarietyInput[groupIndex] && handleVarietyInputChange(groupIndex, newVarietyInput[groupIndex])}
+                                                        onBlur={() => setTimeout(() => setShowVarietySuggestions({ ...showVarietySuggestions, [`${groupIndex}`]: false }), 200)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                addVarietyToGroup(groupIndex, newVarietyInput[groupIndex] || '');
+                                                            }
+                                                        }}
+                                                        placeholder="Ej: Explorer, Freedom, Pink Floyd..."
+                                                        autoComplete="off"
+                                                        className="text-sm"
+                                                    />
+                                                    {showVarietySuggestions[`${groupIndex}`] && varietySuggestions[`${groupIndex}`]?.length > 0 && (
+                                                        <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-32 overflow-auto">
+                                                            {varietySuggestions[`${groupIndex}`].map((variety) => (
+                                                                <button
+                                                                    key={variety.id}
+                                                                    type="button"
+                                                                    className="w-full px-3 py-2 text-left hover:bg-muted text-sm"
+                                                                    onClick={() => selectVariety(groupIndex, variety)}
+                                                                >
+                                                                    {variety.name}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => addVarietyToGroup(groupIndex, newVarietyInput[groupIndex] || '')}
+                                                    disabled={!newVarietyInput[groupIndex]?.trim()}
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                Escribe y presiona Enter o haz clic en + para agregar
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center space-x-2 rounded-lg border p-4">

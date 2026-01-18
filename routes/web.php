@@ -33,6 +33,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Rutas de ingreso de productos
     Route::resource('product-entries', ProductEntryController::class);
+    Route::get('suppliers/{supplier}/varieties', [ProductEntryController::class, 'getSupplierVarieties'])
+        ->name('suppliers.varieties');
 
     // Rutas de clasificaciones (Exportable)
     Route::get('/classifications', [StemClassificationController::class, 'index'])->name('classifications.index');
