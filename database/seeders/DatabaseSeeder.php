@@ -31,5 +31,8 @@ class DatabaseSeeder extends Seeder
         if (Supplier::count() === 0) {
             Supplier::factory(10)->create();
         }
+
+        // Crear especies y variedades
+        $this->call(SpeciesAndVarietiesSeeder::class);
     }
 }
