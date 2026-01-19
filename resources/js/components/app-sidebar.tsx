@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ClipboardList, Flower2, LayoutGrid, Package, Truck, Users } from 'lucide-react';
+import { ClipboardList, Flower2, LayoutGrid, Package, PackagePlus, Truck, Users } from 'lucide-react';
 
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -30,6 +30,11 @@ export function AppSidebar() {
             icon: LayoutGrid,
         },
         {
+            title: 'Entrega y Postcosecha',
+            href: '/delivery-flow',
+            icon: PackagePlus,
+        },
+/*        {
             title: 'Proveedores',
             href: '/suppliers',
             icon: Truck,
@@ -48,7 +53,7 @@ export function AppSidebar() {
             title: 'Flor Local',
             href: '/local-flowers',
             icon: Flower2,
-        },
+        },*/
         ...(can?.manage_users
             ? [
                   {

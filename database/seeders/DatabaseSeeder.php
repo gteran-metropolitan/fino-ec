@@ -27,10 +27,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Crear proveedores de prueba si no existen
-        if (Supplier::count() === 0) {
-            Supplier::factory(10)->create();
-        }
+
 
         // Crear especies y variedades
         $this->call(SpeciesAndVarietiesSeeder::class);

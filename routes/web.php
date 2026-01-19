@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DeliveryFlowController;
 use App\Http\Controllers\LocalFlowerController;
 use App\Http\Controllers\ProductEntryController;
 use App\Http\Controllers\StemClassificationController;
@@ -30,6 +31,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('suppliers', SupplierController::class);
     Route::patch('suppliers/{supplier}/toggle-active', [SupplierController::class, 'toggleActive'])
         ->name('suppliers.toggle-active');
+
+    // ==========================================
+    // MÓDULO PRINCIPAL: Entrega y Postcosecha
+    // ==========================================
+    Route::get('/delivery-flow', [DeliveryFlowController::class, 'index'])->name('delivery-flow.index');
+    Route::get('/delivery-flow/create', [DeliveryFlowController::class, 'create'])->name('delivery-flow.create');
+    Route::post('/delivery-flow', [DeliveryFlowController::class, 'store'])->name('delivery-flow.store');
+    Route::post('/delivery-flow/search-supplier', [DeliveryFlowController::class, 'searchSupplier'])->name('delivery-flow.search-supplier');
+    Route::post('/delivery-flow/quick-supplier', [DeliveryFlowController::class, 'storeQuickSupplier'])->name('delivery-flow.quick-supplier');
+    Route::get('/delivery-flow/{delivery_flow}', [DeliveryFlowController::class, 'show'])->name('delivery-flow.show');
+    Route::get('/delivery-flow/{delivery_flow}/edit', [DeliveryFlowController::class, 'edit'])->name('delivery-flow.edit');
+    Route::put('/delivery-flow/{delivery_flow}', [DeliveryFlowController::class, 'update'])->name('delivery-flow.update');
+    Route::patch('/delivery-flow/{delivery_flow}/info', [DeliveryFlowController::class, 'updateInfo'])->name('delivery-flow.update-info');
+    Route::delete('/delivery-flow/{delivery_flow}', [DeliveryFlowController::class, 'destroy'])->name('delivery-flow.destroy');
+
+    // ==========================================
+    // Rutas secundarias (para edición individual)
+    // ==========================================
 
     // Rutas de ingreso de productos
     Route::resource('product-entries', ProductEntryController::class);
