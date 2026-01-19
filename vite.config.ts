@@ -11,16 +11,21 @@ export default defineConfig({
             ssr: 'resources/js/ssr.tsx',
             refresh: true,
         }),
+
         react({
             babel: {
                 plugins: ['babel-plugin-react-compiler'],
             },
         }),
+
         tailwindcss(),
-        wayfinder({
-            formVariants: true,
-        }),
-    ],
+
+        // ✅ Wayfinder SOLO en local
+        process.env.APP_ENV !== 'production'
+            ? wayfinder({ formVariants: true })
+            : null,
+    ].filter(Boolean),
+
     esbuild: {
         jsx: 'automatic',
     },
