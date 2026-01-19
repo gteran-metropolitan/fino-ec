@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+
+mkdir -p storage/framework/{cache,views,sessions}
+mkdir -p bootstrap/cache
+chmod -R 777 storage bootstrap/cache
