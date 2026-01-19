@@ -117,6 +117,19 @@ interface VarietyEntry {
         cm_120: string;
         sobrante: string;
     };
+    // Precios unitarios
+    prices: {
+        price_40: string;
+        price_50: string;
+        price_60: string;
+        price_70: string;
+        price_80: string;
+        price_90: string;
+        price_100: string;
+        price_110: string;
+        price_120: string;
+        price_sobrante: string;
+    };
     // Flor local (por categoría/subcategoría)
     localFlower: Record<string, string>;
     // Estados de secciones expandidas
@@ -137,16 +150,16 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const stemSizes = [
-    { key: 'cm_40', label: '40', unit: 'cm' },
-    { key: 'cm_50', label: '50', unit: 'cm' },
-    { key: 'cm_60', label: '60', unit: 'cm' },
-    { key: 'cm_70', label: '70', unit: 'cm' },
-    { key: 'cm_80', label: '80', unit: 'cm' },
-    { key: 'cm_90', label: '90', unit: 'cm' },
-    { key: 'cm_100', label: '100', unit: 'cm' },
-    { key: 'cm_110', label: '110', unit: 'cm' },
-    { key: 'cm_120', label: '120', unit: 'cm' },
-    { key: 'sobrante', label: 'Sobrante', unit: '' },
+    { key: 'cm_40', priceKey: 'price_40', label: '40', unit: 'cm' },
+    { key: 'cm_50', priceKey: 'price_50', label: '50', unit: 'cm' },
+    { key: 'cm_60', priceKey: 'price_60', label: '60', unit: 'cm' },
+    { key: 'cm_70', priceKey: 'price_70', label: '70', unit: 'cm' },
+    { key: 'cm_80', priceKey: 'price_80', label: '80', unit: 'cm' },
+    { key: 'cm_90', priceKey: 'price_90', label: '90', unit: 'cm' },
+    { key: 'cm_100', priceKey: 'price_100', label: '100', unit: 'cm' },
+    { key: 'cm_110', priceKey: 'price_110', label: '110', unit: 'cm' },
+    { key: 'cm_120', priceKey: 'price_120', label: '120', unit: 'cm' },
+    { key: 'sobrante', priceKey: 'price_sobrante', label: 'Sobrante', unit: '' },
 ];
 
 // Obtener fecha y hora de Ecuador
@@ -174,6 +187,19 @@ const createEmptyExportable = () => ({
     cm_110: '',
     cm_120: '',
     sobrante: '',
+});
+
+const createEmptyPrices = () => ({
+    price_40: '',
+    price_50: '',
+    price_60: '',
+    price_70: '',
+    price_80: '',
+    price_90: '',
+    price_100: '',
+    price_110: '',
+    price_120: '',
+    price_sobrante: '',
 });
 
 export default function CreateDeliveryFlow({ categories, existingSpecies = [], existingVarieties = [] }: Props) {
@@ -505,8 +531,9 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
             variety_name: sv.variety_name,
             quantity: '',
             exportable: createEmptyExportable(),
+            prices: createEmptyPrices(),
             localFlower: {},
-            exportableOpen: false,
+            exportableOpen: true,
             localFlowerOpen: false,
         };
         setEntryCounter((prev) => prev + 1);
@@ -526,8 +553,9 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
             variety_name: newVarietyName.trim(),
             quantity: '',
             exportable: createEmptyExportable(),
+            prices: createEmptyPrices(),
             localFlower: {},
-            exportableOpen: false,
+            exportableOpen: true,
             localFlowerOpen: false,
         };
         setEntryCounter((prev) => prev + 1);
@@ -581,6 +609,42 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
                 ),
             );
         }
+    };
+
+    // Actualizar precio unitario de una entrada
+    const updateEntryPrice = (
+        entryId: string,
+        key: string,
+        value: string,
+    ) => {
+        // Permitir números decimales con hasta 2 decimales
+        const cleanValue = value.replace(/[^0-9.]/g, '');
+        if (cleanValue === '' || /^\d*\.?\d{0,2}$/.test(cleanValue)) {
+            setEntries(
+                entries.map((e) =>
+                    e.id === entryId
+                        ? {
+                              ...e,
+                              prices: {
+                                  ...e.prices,
+                                  [key]: cleanValue,
+                              },
+                          }
+                        : e,
+                ),
+            );
+        }
+    };
+
+    // Calcular total de precios de una entrada
+    const calculateEntryTotalPrice = (entry: VarietyEntry): number => {
+        let total = 0;
+        stemSizes.forEach(({ key, priceKey }) => {
+            const qty = Number(entry.exportable[key as keyof typeof entry.exportable]) || 0;
+            const price = Number(entry.prices[priceKey as keyof typeof entry.prices]) || 0;
+            total += qty * price;
+        });
+        return total;
     };
 
     // Actualizar flor local de una entrada
@@ -676,18 +740,21 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
         let totalQuantity = 0;
         let totalExportable = 0;
         let totalLocal = 0;
+        let totalPrice = 0;
 
         entries.forEach((entry) => {
             const totals = getEntryTotals(entry);
             totalQuantity += totals.quantity;
             totalExportable += totals.totalExportable;
             totalLocal += totals.totalLocal;
+            totalPrice += calculateEntryTotalPrice(entry);
         });
 
         return {
             totalQuantity,
             totalExportable,
             totalLocal,
+            totalPrice,
             totalClassified: totalExportable + totalLocal,
             remaining: totalQuantity - (totalExportable + totalLocal),
         };
@@ -774,6 +841,19 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
                         cm_120: Number(entry.exportable.cm_120) || 0,
                         sobrante: Number(entry.exportable.sobrante) || 0,
                     },
+                    prices: {
+                        price_40: Number(entry.prices.price_40) || 0,
+                        price_50: Number(entry.prices.price_50) || 0,
+                        price_60: Number(entry.prices.price_60) || 0,
+                        price_70: Number(entry.prices.price_70) || 0,
+                        price_80: Number(entry.prices.price_80) || 0,
+                        price_90: Number(entry.prices.price_90) || 0,
+                        price_100: Number(entry.prices.price_100) || 0,
+                        price_110: Number(entry.prices.price_110) || 0,
+                        price_120: Number(entry.prices.price_120) || 0,
+                        price_sobrante: Number(entry.prices.price_sobrante) || 0,
+                    },
+                    total_price: calculateEntryTotalPrice(entry),
                     rejections,
                 };
             }),
@@ -1149,6 +1229,11 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
                                             {globalTotals.remaining}
                                         </strong>
                                     </span>
+                                    {globalTotals.totalPrice > 0 && (
+                                        <span className="text-emerald-600 font-semibold">
+                                            💰 Total: ${globalTotals.totalPrice.toFixed(2)}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
@@ -1285,56 +1370,94 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
                                                 </div>
                                             </CollapsibleTrigger>
                                             <CollapsibleContent>
-                                                <div className="border-b p-4">
-                                                    <div className="grid gap-3 sm:grid-cols-5 lg:grid-cols-10">
+                                                <div className="border-b p-4 space-y-4">
+                                                    {/* Grid de tamaños con precios */}
+                                                    <div className="grid gap-2 sm:grid-cols-5 lg:grid-cols-10">
                                                         {stemSizes.map(
                                                             ({
                                                                 key,
+                                                                priceKey,
                                                                 label,
                                                                 unit,
-                                                            }) => (
-                                                                <div
-                                                                    key={key}
-                                                                    className="space-y-1"
-                                                                >
-                                                                    <Label className="block text-center text-xs">
-                                                                        {label}
-                                                                        {unit && (
-                                                                            <span className="text-muted-foreground">
-                                                                                {' '}
-                                                                                {
-                                                                                    unit
+                                                            }) => {
+                                                                const qty = Number(entry.exportable[key as keyof typeof entry.exportable]) || 0;
+                                                                const price = Number(entry.prices[priceKey as keyof typeof entry.prices]) || 0;
+                                                                const subtotal = qty * price;
+
+                                                                return (
+                                                                    <div
+                                                                        key={key}
+                                                                        className="space-y-1 p-2 rounded-lg bg-muted/30 border"
+                                                                    >
+                                                                        <Label className="block text-center text-xs font-semibold">
+                                                                            {label}
+                                                                            {unit && (
+                                                                                <span className="text-muted-foreground">
+                                                                                    {' '}
+                                                                                    {unit}
+                                                                                </span>
+                                                                            )}
+                                                                        </Label>
+                                                                        <Input
+                                                                            type="number"
+                                                                            min="0"
+                                                                            value={
+                                                                                entry.exportable[
+                                                                                    key as keyof typeof entry.exportable
+                                                                                ]
+                                                                            }
+                                                                            onChange={(e) =>
+                                                                                updateEntryExportable(
+                                                                                    entry.id,
+                                                                                    key,
+                                                                                    e.target.value,
+                                                                                )
+                                                                            }
+                                                                            className="h-8 text-center text-sm"
+                                                                            placeholder="0"
+                                                                        />
+                                                                        <div className="pt-1 border-t">
+                                                                            <Label className="text-[10px] text-center block text-muted-foreground">
+                                                                                Precio $
+                                                                            </Label>
+                                                                            <Input
+                                                                                type="text"
+                                                                                value={entry.prices[priceKey as keyof typeof entry.prices]}
+                                                                                onChange={(e) =>
+                                                                                    updateEntryPrice(
+                                                                                        entry.id,
+                                                                                        priceKey,
+                                                                                        e.target.value,
+                                                                                    )
                                                                                 }
-                                                                            </span>
+                                                                                className="text-center h-7 text-xs"
+                                                                                placeholder="0.00"
+                                                                            />
+                                                                        </div>
+                                                                        {subtotal > 0 && (
+                                                                            <div className="text-center pt-1 border-t">
+                                                                                <span className="text-[10px] text-green-600 font-medium">
+                                                                                    ${subtotal.toFixed(2)}
+                                                                                </span>
+                                                                            </div>
                                                                         )}
-                                                                    </Label>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min="0"
-                                                                        value={
-                                                                            entry
-                                                                                .exportable[
-                                                                                key as keyof typeof entry.exportable
-                                                                            ]
-                                                                        }
-                                                                        onChange={(
-                                                                            e,
-                                                                        ) =>
-                                                                            updateEntryExportable(
-                                                                                entry.id,
-                                                                                key,
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                            )
-                                                                        }
-                                                                        className="h-8 text-center text-sm"
-                                                                        placeholder="0"
-                                                                    />
-                                                                </div>
-                                                            ),
+                                                                    </div>
+                                                                );
+                                                            }
                                                         )}
                                                     </div>
+
+                                                    {/* Total de la variedad */}
+                                                    {calculateEntryTotalPrice(entry) > 0 && (
+                                                        <div className="flex justify-end pt-3 border-t">
+                                                            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-right">
+                                                                <span className="text-xs text-green-600 block">Total Exportable</span>
+                                                                <span className="text-xl font-bold text-green-700">
+                                                                    ${calculateEntryTotalPrice(entry).toFixed(2)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </CollapsibleContent>
                                         </Collapsible>
