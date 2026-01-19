@@ -117,15 +117,24 @@ export default function ClassificationsIndex({ classifications }: Props) {
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
-        return date.toLocaleString('es-EC', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-            timeZone: 'America/Guayaquil',
-        });
+        return {
+            short: date.toLocaleString('es-EC', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'America/Guayaquil',
+            }),
+            long: date.toLocaleDateString('es-EC', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'America/Guayaquil',
+            }),
+        };
     };
 
     return (
@@ -173,7 +182,10 @@ export default function ClassificationsIndex({ classifications }: Props) {
                                 classifications.data.map((classification) => (
                                     <TableRow key={classification.id}>
                                         <TableCell className="font-medium text-xs">
-                                            {formatDate(classification.product_entry.delivery_date)}
+                                            <div>
+                                                <p>{formatDate(classification.product_entry.delivery_date).short}</p>
+                                                <p className="text-xs text-muted-foreground capitalize">{formatDate(classification.product_entry.delivery_date).long}</p>
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-sm">
                                             {classification.product_entry.supplier.name}

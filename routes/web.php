@@ -38,7 +38,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/delivery-flow', [DeliveryFlowController::class, 'index'])->name('delivery-flow.index');
     Route::get('/delivery-flow/create', [DeliveryFlowController::class, 'create'])->name('delivery-flow.create');
     Route::post('/delivery-flow', [DeliveryFlowController::class, 'store'])->name('delivery-flow.store');
-     Route::post('/delivery-flow/search-supplier', [DeliveryFlowController::class, 'searchSupplier'])->name('delivery-flow.search-supplier');
+    Route::post('/delivery-flow/search-supplier', [DeliveryFlowController::class, 'searchSupplier'])->name('delivery-flow.search-supplier');
     Route::post('/delivery-flow/quick-supplier', [DeliveryFlowController::class, 'storeQuickSupplier'])->name('delivery-flow.quick-supplier');
     Route::get('/delivery-flow/{delivery_flow}', [DeliveryFlowController::class, 'show'])->name('delivery-flow.show');
     Route::get('/delivery-flow/{delivery_flow}/edit', [DeliveryFlowController::class, 'edit'])->name('delivery-flow.edit');

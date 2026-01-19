@@ -14,37 +14,37 @@ class SpeciesAndVarietiesSeeder extends Seeder
     public function run(): void
     {
         $speciesData = [
-            'Rosa' => [
-                'Explorer',
-                'Pink Floyd',
-                'Freedom',
-                'Vendela',
-                'Red Naomi',
-                'Mondial',
-                'Brighton',
-                'High & Magic',
+            'ROSA' => [
+                'EXPLORER',
+                'PINK FLOYD',
+                'FREEDOM',
+                'VENDELA',
+                'RED NAOMI',
+                'MONDIAL',
+                'BRIGHTON',
+                'HIGH & MAGIC',
             ],
-            'Clavel' => [
-                'Nobbio',
-                'Baltico',
-                'Nelson',
-                'Prado',
-                'Tempo',
+            'CLAVEL' => [
+                'NOBBIO',
+                'BALTICO',
+                'NELSON',
+                'PRADO',
+                'TEMPO',
             ],
-            'Gypsophila' => [
-                'Million Stars',
-                'Xlence',
-                'New Love',
+            'GYPSOPHILA' => [
+                'MILLION STARS',
+                'XLENCE',
+                'NEW LOVE',
             ],
-            'Lirio' => [
-                'Casablanca',
-                'Stargazer',
-                'Siberia',
+            'LIRIO' => [
+                'CASABLANCA',
+                'STARGAZER',
+                'SIBERIA',
             ],
-            'Crisantemo' => [
-                'Anastasia',
-                'Bacardi',
-                'Zembla',
+            'CRISANTEMO' => [
+                'ANASTASIA',
+                'BACARDI',
+                'ZEMBLA',
             ],
         ];
 

@@ -26,7 +26,7 @@ export default function Dashboard() {
                     </p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-1">
                     {/* Tarjeta de Proveedores */}
                     <Link href="/delivery-flow" className="group">
                         <div className="relative flex h-full flex-col justify-between rounded-xl border bg-card p-5 transition-all duration-200 hover:border-foreground/20 hover:shadow-sm">

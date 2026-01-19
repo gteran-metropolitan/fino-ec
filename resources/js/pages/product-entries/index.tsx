@@ -96,15 +96,24 @@ export default function ProductEntriesIndex({ entries }: Props) {
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
-        return date.toLocaleString('es-EC', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-            timeZone: 'America/Guayaquil',
-        });
+        return {
+            short: date.toLocaleString('es-EC', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'America/Guayaquil',
+            }),
+            long: date.toLocaleDateString('es-EC', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'America/Guayaquil',
+            }),
+        };
     };
 
     return (
@@ -153,7 +162,10 @@ export default function ProductEntriesIndex({ entries }: Props) {
                                 entries.data.map((entry) => (
                                     <TableRow key={entry.id}>
                                         <TableCell className="font-medium">
-                                            {formatDate(entry.delivery_date)}
+                                            <div>
+                                                <p>{formatDate(entry.delivery_date).short}</p>
+                                                <p className="text-xs text-muted-foreground capitalize">{formatDate(entry.delivery_date).long}</p>
+                                            </div>
                                         </TableCell>
                                         <TableCell>{entry.supplier.name}</TableCell>
                                         <TableCell>{entry.species.name}</TableCell>

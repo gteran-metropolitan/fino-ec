@@ -1,12 +1,35 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Check, ChevronDown, ChevronUp, Flower2, Plus, Ruler, Save, Search, Trash2, Truck, UserPlus, X } from 'lucide-react';
+import {
+    Check,
+    ChevronDown,
+    ChevronUp,
+    Flower2,
+    Plus,
+    Ruler,
+    Save,
+    Search,
+    Trash2,
+    Truck,
+    UserPlus,
+    X,
+} from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     Dialog,
     DialogContent,
@@ -17,8 +40,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
+import http from '@/lib/http';
 import { type BreadcrumbItem } from '@/types';
 
 interface SupplierVariety {
@@ -56,6 +79,25 @@ interface Category {
     active_subcategories: Subcategory[];
 }
 
+interface ExistingSpecies {
+    id: number;
+    name: string;
+}
+
+interface ExistingVariety {
+    id: number;
+    name: string;
+    species_id: number;
+}
+
+// Interfaz para entrega existente del día
+interface ExistingDelivery {
+    id: number;
+    entry_datetime: string;
+    total_entries: number;
+    total_stems: number;
+}
+
 // Estructura para cada variedad ingresada con su clasificación
 interface VarietyEntry {
     id: string; // ID único local
@@ -83,8 +125,9 @@ interface VarietyEntry {
 }
 
 interface Props {
-    suppliers: Supplier[];
     categories: Category[];
+    existingSpecies: ExistingSpecies[];
+    existingVarieties: ExistingVariety[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -111,7 +154,9 @@ const getEcuadorDateTime = () => {
     const now = new Date();
     const ecuadorOffset = -5 * 60;
     const localOffset = now.getTimezoneOffset();
-    const ecuadorTime = new Date(now.getTime() + (localOffset + ecuadorOffset) * 60000);
+    const ecuadorTime = new Date(
+        now.getTime() + (localOffset + ecuadorOffset) * 60000,
+    );
     return {
         date: ecuadorTime.toISOString().split('T')[0],
         time: ecuadorTime.toTimeString().slice(0, 5),
@@ -119,15 +164,25 @@ const getEcuadorDateTime = () => {
 };
 
 const createEmptyExportable = () => ({
-    cm_40: '', cm_50: '', cm_60: '', cm_70: '', cm_80: '',
-    cm_90: '', cm_100: '', cm_110: '', cm_120: '', sobrante: '',
+    cm_40: '',
+    cm_50: '',
+    cm_60: '',
+    cm_70: '',
+    cm_80: '',
+    cm_90: '',
+    cm_100: '',
+    cm_110: '',
+    cm_120: '',
+    sobrante: '',
 });
 
-export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
+export default function CreateDeliveryFlow({ categories, existingSpecies = [], existingVarieties = [] }: Props) {
     const ecuadorNow = getEcuadorDateTime();
 
     // Paso actual del flujo
-    const [currentStep, setCurrentStep] = useState<'supplier' | 'entry'>('supplier');
+    const [currentStep, setCurrentStep] = useState<'supplier' | 'entry'>(
+        'supplier',
+    );
 
     // Búsqueda de proveedor
     const [supplierCode, setSupplierCode] = useState('');
@@ -143,24 +198,46 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
         phone: '',
         ruc: '',
     });
-    const [newSupplierErrors, setNewSupplierErrors] = useState<Record<string, string>>({});
+    const [newSupplierErrors, setNewSupplierErrors] = useState<
+        Record<string, string>
+    >({});
     const [creatingSupplier, setCreatingSupplier] = useState(false);
 
     // Datos básicos de la entrega
     const [supplierId, setSupplierId] = useState('');
-    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
+        null,
+    );
     const [deliveryDate, setDeliveryDate] = useState(ecuadorNow.date);
     const [deliveryTime, setDeliveryTime] = useState(ecuadorNow.time);
 
     // Variedades del proveedor
-    const [supplierVarieties, setSupplierVarieties] = useState<SupplierVariety[]>([]);
-    const [availableVarieties, setAvailableVarieties] = useState<SupplierVariety[]>([]);
+    const [supplierVarieties, setSupplierVarieties] = useState<
+        SupplierVariety[]
+    >([]);
+    const [availableVarieties, setAvailableVarieties] = useState<
+        SupplierVariety[]
+    >([]);
 
     // Entradas de variedades con clasificación
     const [entries, setEntries] = useState<VarietyEntry[]>([]);
 
     const [processing, setProcessing] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+
+    // Estado para entrega existente del día
+    const [existingDelivery, setExistingDelivery] = useState<ExistingDelivery | null>(null);
+    const [showExistingDeliveryDialog, setShowExistingDeliveryDialog] = useState(false);
+
+    // Estado para agregar variedad manual
+    const [newSpeciesName, setNewSpeciesName] = useState('');
+    const [newVarietyName, setNewVarietyName] = useState('');
+
+    // Estados para autocompletado
+    const [showSpeciesSuggestions, setShowSpeciesSuggestions] = useState(false);
+    const [showVarietySuggestions, setShowVarietySuggestions] = useState(false);
+    const [filteredSpecies, setFilteredSpecies] = useState<ExistingSpecies[]>([]);
+    const [filteredVarieties, setFilteredVarieties] = useState<ExistingVariety[]>([]);
 
     // Buscar proveedor por código
     const handleSearchSupplier = async () => {
@@ -173,40 +250,63 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
         setSearchMessage('');
 
         try {
-            const response = await fetch('/delivery-flow/search-supplier', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({ code: supplierCode.trim() }),
+            const { data } = await http.post('/delivery-flow/search-supplier', {
+                code: supplierCode.trim(),
             });
-
-            const data = await response.json();
 
             if (data.found) {
                 // Proveedor encontrado
                 setSelectedSupplier(data.supplier);
                 setSupplierId(data.supplier.id.toString());
                 loadSupplierVarieties(data.supplier);
-                setCurrentStep('entry');
+
+                // Verificar si tiene entrega del día
+                if (data.existing_delivery) {
+                    setExistingDelivery(data.existing_delivery);
+                    setShowExistingDeliveryDialog(true);
+                } else {
+                    setCurrentStep('entry');
+                }
                 setSearchMessage('');
             } else {
                 // No encontrado - mostrar mensaje y opción de crear
                 setSearchMessage(data.message);
-                setNewSupplier(prev => ({ ...prev, code: supplierCode.trim() }));
+                setNewSupplier((prev) => ({
+                    ...prev,
+                    code: supplierCode.trim(),
+                }));
             }
-        } catch {
-            setSearchMessage('Error al buscar el proveedor. Intenta de nuevo.');
+        } catch (error: unknown) {
+            console.error('Error en búsqueda:', error);
+            const axiosError = error as { response?: { status?: number } };
+            if (axiosError.response?.status === 419) {
+                setSearchMessage('La sesión ha expirado. Por favor, recarga la página.');
+            } else {
+                setSearchMessage('Error de conexión al buscar el proveedor. Verifica tu conexión.');
+            }
         } finally {
             setSearchingSupplier(false);
+        }
+    };
+
+    // Continuar con nueva entrega (ignorar la existente)
+    const handleContinueNewDelivery = () => {
+        setShowExistingDeliveryDialog(false);
+        setExistingDelivery(null);
+        setCurrentStep('entry');
+    };
+
+    // Ir a editar la entrega existente
+    const handleEditExistingDelivery = () => {
+        if (existingDelivery) {
+            router.visit(`/delivery-flow/${existingDelivery.id}`);
         }
     };
 
     // Cargar variedades del proveedor seleccionado
     const loadSupplierVarieties = (supplier: Supplier) => {
         if (supplier.supplier_varieties) {
-            const varieties = supplier.supplier_varieties.map(sv => ({
+            const varieties = supplier.supplier_varieties.map((sv) => ({
                 id: sv.id,
                 species_id: sv.species.id,
                 species_name: sv.species.name,
@@ -266,27 +366,26 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
         setCreatingSupplier(true);
 
         try {
-            const response = await fetch('/delivery-flow/quick-supplier', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify(newSupplier),
-            });
+            const { data } = await http.post('/delivery-flow/quick-supplier', newSupplier);
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
+            if (data.success) {
                 // Proveedor creado exitosamente
                 setSelectedSupplier(data.supplier);
                 setSupplierId(data.supplier.id.toString());
                 loadSupplierVarieties(data.supplier);
                 setShowCreateSupplier(false);
                 setCurrentStep('entry');
-                setSuccessMessage('Proveedor creado exitosamente. Ahora puedes ingresar la entrega.');
+                setSuccessMessage(
+                    'Proveedor creado exitosamente. Ahora puedes ingresar la entrega.',
+                );
                 // Limpiar formulario
-                setNewSupplier({ code: '', name: '', email: '', phone: '', ruc: '' });
+                setNewSupplier({
+                    code: '',
+                    name: '',
+                    email: '',
+                    phone: '',
+                    ruc: '',
+                });
                 setNewSupplierErrors({});
                 setSearchMessage('');
             } else {
@@ -294,11 +393,20 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                 if (data.errors) {
                     setNewSupplierErrors(data.errors);
                 } else {
-                    setNewSupplierErrors({ general: data.message || 'Error al crear el proveedor.' });
+                    setNewSupplierErrors({
+                        general: data.message || 'Error al crear el proveedor.',
+                    });
                 }
             }
-        } catch {
-            setNewSupplierErrors({ general: 'Error de conexión. Intenta de nuevo.' });
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { errors?: Record<string, string>; message?: string } } };
+            if (axiosError.response?.data?.errors) {
+                setNewSupplierErrors(axiosError.response.data.errors);
+            } else {
+                setNewSupplierErrors({
+                    general: axiosError.response?.data?.message || 'Error de conexión. Intenta de nuevo.',
+                });
+            }
         } finally {
             setCreatingSupplier(false);
         }
@@ -314,19 +422,80 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
         setEntries([]);
     };
 
-    // Cargar variedades cuando se selecciona proveedor (desde el select de respaldo)
-    const handleSupplierChange = (value: string) => {
-        setSupplierId(value);
-        const supplier = suppliers.find(s => s.id.toString() === value);
-        if (supplier) {
-            setSelectedSupplier(supplier);
-            loadSupplierVarieties(supplier);
-            setCurrentStep('entry');
+    // Contador para IDs únicos
+    const [entryCounter, setEntryCounter] = useState(0);
+
+    // Manejar cambio de especie con autocompletado y mayúsculas
+    const handleSpeciesChange = (value: string) => {
+        // Convertir a mayúsculas y filtrar caracteres no permitidos
+        const upperValue = value.toUpperCase().replace(/[^A-ZÁÉÍÓÚÑÜ\s]/g, '');
+        setNewSpeciesName(upperValue);
+
+        // Filtrar sugerencias
+        if (upperValue.trim()) {
+            const filtered = existingSpecies.filter(s =>
+                s.name.toUpperCase().includes(upperValue.trim())
+            );
+            setFilteredSpecies(filtered);
+            setShowSpeciesSuggestions(filtered.length > 0);
+        } else {
+            setFilteredSpecies([]);
+            setShowSpeciesSuggestions(false);
         }
     };
 
-    // Contador para IDs únicos
-    const [entryCounter, setEntryCounter] = useState(0);
+    // Manejar cambio de variedad con autocompletado y mayúsculas
+    const handleVarietyChange = (value: string) => {
+        // Convertir a mayúsculas y filtrar caracteres no permitidos
+        const upperValue = value.toUpperCase().replace(/[^A-ZÁÉÍÓÚÑÜ0-9\s-]/g, '');
+        setNewVarietyName(upperValue);
+
+        // Filtrar sugerencias basadas en la especie seleccionada
+        if (upperValue.trim()) {
+            // Buscar el ID de la especie actual si existe
+            const currentSpecies = existingSpecies.find(s =>
+                s.name.toUpperCase() === newSpeciesName.trim().toUpperCase()
+            );
+
+            let filtered: ExistingVariety[];
+            if (currentSpecies) {
+                // Filtrar variedades de esa especie específica
+                filtered = existingVarieties.filter(v =>
+                    v.species_id === currentSpecies.id &&
+                    v.name.toUpperCase().includes(upperValue.trim())
+                );
+            } else {
+                // Filtrar todas las variedades
+                filtered = existingVarieties.filter(v =>
+                    v.name.toUpperCase().includes(upperValue.trim())
+                );
+            }
+            setFilteredVarieties(filtered);
+            setShowVarietySuggestions(filtered.length > 0);
+        } else {
+            setFilteredVarieties([]);
+            setShowVarietySuggestions(false);
+        }
+    };
+
+    // Seleccionar especie de las sugerencias
+    const selectSpecies = (species: ExistingSpecies) => {
+        setNewSpeciesName(species.name.toUpperCase());
+        setShowSpeciesSuggestions(false);
+    };
+
+    // Seleccionar variedad de las sugerencias
+    const selectVariety = (variety: ExistingVariety) => {
+        setNewVarietyName(variety.name.toUpperCase());
+        // Si no hay especie seleccionada, autocompletar con la especie de la variedad
+        if (!newSpeciesName.trim()) {
+            const species = existingSpecies.find(s => s.id === variety.species_id);
+            if (species) {
+                setNewSpeciesName(species.name.toUpperCase());
+            }
+        }
+        setShowVarietySuggestions(false);
+    };
 
     // Agregar variedad a las entradas
     const addVariety = (sv: SupplierVariety) => {
@@ -340,77 +509,152 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
             exportableOpen: false,
             localFlowerOpen: false,
         };
-        setEntryCounter(prev => prev + 1);
+        setEntryCounter((prev) => prev + 1);
         setEntries([...entries, newEntry]);
-        setAvailableVarieties(availableVarieties.filter(v => v.id !== sv.id));
+        setAvailableVarieties(availableVarieties.filter((v) => v.id !== sv.id));
+    };
+
+    // Agregar variedad manualmente (cuando el proveedor no tiene variedades registradas)
+    const addManualVariety = () => {
+        if (!newSpeciesName.trim() || !newVarietyName.trim()) {
+            return;
+        }
+
+        const newEntry: VarietyEntry = {
+            id: `entry-${entryCounter}`,
+            species_name: newSpeciesName.trim(),
+            variety_name: newVarietyName.trim(),
+            quantity: '',
+            exportable: createEmptyExportable(),
+            localFlower: {},
+            exportableOpen: false,
+            localFlowerOpen: false,
+        };
+        setEntryCounter((prev) => prev + 1);
+        setEntries([...entries, newEntry]);
+        setNewSpeciesName('');
+        setNewVarietyName('');
     };
 
     // Eliminar entrada
     const removeEntry = (entryId: string) => {
-        const entry = entries.find(e => e.id === entryId);
+        const entry = entries.find((e) => e.id === entryId);
         if (entry) {
             const originalVariety = supplierVarieties.find(
-                sv => sv.species_name === entry.species_name && sv.variety_name === entry.variety_name
+                (sv) =>
+                    sv.species_name === entry.species_name &&
+                    sv.variety_name === entry.variety_name,
             );
             if (originalVariety) {
                 setAvailableVarieties([...availableVarieties, originalVariety]);
             }
         }
-        setEntries(entries.filter(e => e.id !== entryId));
+        setEntries(entries.filter((e) => e.id !== entryId));
     };
 
     // Actualizar cantidad de una entrada
     const updateEntryQuantity = (entryId: string, quantity: string) => {
-        setEntries(entries.map(e => e.id === entryId ? { ...e, quantity } : e));
+        setEntries(
+            entries.map((e) => (e.id === entryId ? { ...e, quantity } : e)),
+        );
     };
 
     // Actualizar exportable de una entrada
-    const updateEntryExportable = (entryId: string, key: string, value: string) => {
+    const updateEntryExportable = (
+        entryId: string,
+        key: string,
+        value: string,
+    ) => {
         const cleanValue = value.replace(/^0+(?=\d)/, '');
         if (cleanValue === '' || /^\d+$/.test(cleanValue)) {
-            setEntries(entries.map(e => e.id === entryId ? {
-                ...e,
-                exportable: { ...e.exportable, [key]: cleanValue }
-            } : e));
+            setEntries(
+                entries.map((e) =>
+                    e.id === entryId
+                        ? {
+                              ...e,
+                              exportable: {
+                                  ...e.exportable,
+                                  [key]: cleanValue,
+                              },
+                          }
+                        : e,
+                ),
+            );
         }
     };
 
     // Actualizar flor local de una entrada
-    const updateEntryLocalFlower = (entryId: string, key: string, value: string) => {
+    const updateEntryLocalFlower = (
+        entryId: string,
+        key: string,
+        value: string,
+    ) => {
         if (key.endsWith('_detail')) {
-            setEntries(entries.map(e => e.id === entryId ? {
-                ...e,
-                localFlower: { ...e.localFlower, [key]: value }
-            } : e));
+            // Convertir a MAYÚSCULAS para los campos de detalle
+            const upperValue = value.toUpperCase();
+            setEntries(
+                entries.map((e) =>
+                    e.id === entryId
+                        ? {
+                              ...e,
+                              localFlower: { ...e.localFlower, [key]: upperValue },
+                          }
+                        : e,
+                ),
+            );
         } else {
             const cleanValue = value.replace(/^0+(?=\d)/, '');
             if (cleanValue === '' || /^\d+$/.test(cleanValue)) {
-                setEntries(entries.map(e => e.id === entryId ? {
-                    ...e,
-                    localFlower: { ...e.localFlower, [key]: cleanValue }
-                } : e));
+                setEntries(
+                    entries.map((e) =>
+                        e.id === entryId
+                            ? {
+                                  ...e,
+                                  localFlower: {
+                                      ...e.localFlower,
+                                      [key]: cleanValue,
+                                  },
+                              }
+                            : e,
+                    ),
+                );
             }
         }
     };
 
     // Toggle secciones
     const toggleExportable = (entryId: string) => {
-        setEntries(entries.map(e => e.id === entryId ? { ...e, exportableOpen: !e.exportableOpen } : e));
+        setEntries(
+            entries.map((e) =>
+                e.id === entryId
+                    ? { ...e, exportableOpen: !e.exportableOpen }
+                    : e,
+            ),
+        );
     };
 
     const toggleLocalFlower = (entryId: string) => {
-        setEntries(entries.map(e => e.id === entryId ? { ...e, localFlowerOpen: !e.localFlowerOpen } : e));
+        setEntries(
+            entries.map((e) =>
+                e.id === entryId
+                    ? { ...e, localFlowerOpen: !e.localFlowerOpen }
+                    : e,
+            ),
+        );
     };
 
     // Calcular totales para una entrada
     const getEntryTotals = (entry: VarietyEntry) => {
         const quantity = Number(entry.quantity) || 0;
-        const totalExportable = Object.values(entry.exportable).reduce((sum, val) => sum + (Number(val) || 0), 0);
+        const totalExportable = Object.values(entry.exportable).reduce(
+            (sum, val) => sum + (Number(val) || 0),
+            0,
+        );
 
         let totalLocal = 0;
-        categories.forEach(cat => {
+        categories.forEach((cat) => {
             totalLocal += Number(entry.localFlower[`cat_${cat.id}`]) || 0;
-            cat.active_subcategories?.forEach(sub => {
+            cat.active_subcategories?.forEach((sub) => {
                 totalLocal += Number(entry.localFlower[`sub_${sub.id}`]) || 0;
             });
         });
@@ -418,7 +662,13 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
         const totalClassified = totalExportable + totalLocal;
         const remaining = quantity - totalClassified;
 
-        return { quantity, totalExportable, totalLocal, totalClassified, remaining };
+        return {
+            quantity,
+            totalExportable,
+            totalLocal,
+            totalClassified,
+            remaining,
+        };
     };
 
     // Calcular totales generales
@@ -427,7 +677,7 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
         let totalExportable = 0;
         let totalLocal = 0;
 
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
             const totals = getEntryTotals(entry);
             totalQuantity += totals.quantity;
             totalExportable += totals.totalExportable;
@@ -446,16 +696,20 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
     const globalTotals = calculateGlobalTotals();
 
     // Agrupar variedades disponibles por especie
-    const groupedAvailableVarieties = availableVarieties.reduce((acc, sv) => {
-        if (!acc[sv.species_name]) {
-            acc[sv.species_name] = [];
-        }
-        acc[sv.species_name].push(sv);
-        return acc;
-    }, {} as Record<string, SupplierVariety[]>);
+    const groupedAvailableVarieties = availableVarieties.reduce(
+        (acc, sv) => {
+            if (!acc[sv.species_name]) {
+                acc[sv.species_name] = [];
+            }
+            acc[sv.species_name].push(sv);
+            return acc;
+        },
+        {} as Record<string, SupplierVariety[]>,
+    );
 
     // Validar si se puede guardar
-    const canSave = entries.length > 0 && entries.every(e => Number(e.quantity) > 0);
+    const canSave =
+        entries.length > 0 && entries.every((e) => Number(e.quantity) > 0);
 
     // Guardar todo
     const handleSave: FormEventHandler = (e) => {
@@ -465,8 +719,7 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
             supplier_id: supplierId,
             delivery_date: deliveryDate,
             delivery_time: deliveryTime,
-            entries: entries.map(entry => {
-
+            entries: entries.map((entry) => {
                 // Preparar rechazos de flor local
                 const rejections: Array<{
                     category_id: number;
@@ -475,25 +728,31 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                     detail: string | null;
                 }> = [];
 
-                categories.forEach(cat => {
-                    const catQuantity = Number(entry.localFlower[`cat_${cat.id}`]) || 0;
+                categories.forEach((cat) => {
+                    const catQuantity =
+                        Number(entry.localFlower[`cat_${cat.id}`]) || 0;
                     if (catQuantity > 0) {
                         rejections.push({
                             category_id: cat.id,
                             subcategory_id: null,
                             quantity: catQuantity,
-                            detail: entry.localFlower[`cat_${cat.id}_detail`] || null,
+                            detail:
+                                entry.localFlower[`cat_${cat.id}_detail`] ||
+                                null,
                         });
                     }
 
-                    cat.active_subcategories?.forEach(sub => {
-                        const subQuantity = Number(entry.localFlower[`sub_${sub.id}`]) || 0;
+                    cat.active_subcategories?.forEach((sub) => {
+                        const subQuantity =
+                            Number(entry.localFlower[`sub_${sub.id}`]) || 0;
                         if (subQuantity > 0) {
                             rejections.push({
                                 category_id: cat.id,
                                 subcategory_id: sub.id,
                                 quantity: subQuantity,
-                                detail: entry.localFlower[`sub_${sub.id}_detail`] || null,
+                                detail:
+                                    entry.localFlower[`sub_${sub.id}_detail`] ||
+                                    null,
                             });
                         }
                     });
@@ -534,16 +793,21 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
             <Head title="Nueva Entrega" />
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Nueva Entrega y Postcosecha</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                        Nueva Entrega y Postcosecha
+                    </h1>
                     <p className="text-sm text-muted-foreground">
-                        Registra la entrega completa: variedades, clasificación exportable y flor local
+                        Registra la entrega completa: variedades, clasificación
+                        exportable y flor local
                     </p>
                 </div>
 
                 {successMessage && (
                     <Alert className="border-green-500 bg-green-50">
                         <Check className="h-4 w-4 text-green-600" />
-                        <AlertDescription className="text-green-700">{successMessage}</AlertDescription>
+                        <AlertDescription className="text-green-700">
+                            {successMessage}
+                        </AlertDescription>
                     </Alert>
                 )}
 
@@ -554,14 +818,17 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                             <CardHeader>
                                 <div className="flex items-center gap-2">
                                     <Search className="h-5 w-5 text-muted-foreground" />
-                                    <CardTitle>Paso 1: Buscar Proveedor</CardTitle>
+                                    <CardTitle>
+                                        Paso 1: Buscar Proveedor
+                                    </CardTitle>
                                 </div>
                                 <CardDescription>
-                                    Ingresa el código del proveedor para buscarlo en el sistema
+                                    Ingresa el código del proveedor para
+                                    buscarlo en el sistema
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="flex gap-4 items-end">
+                                <div className="flex items-end gap-4">
                                     <div className="flex-1 space-y-2">
                                         <Label>Código de Proveedor *</Label>
                                         <Input
@@ -571,9 +838,13 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                                 setSupplierCode(e.target.value);
                                                 setSearchMessage('');
                                             }}
-                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchSupplier())}
+                                            onKeyDown={(e) =>
+                                                e.key === 'Enter' &&
+                                                (e.preventDefault(),
+                                                handleSearchSupplier())
+                                            }
                                             placeholder="Ej: PROV001"
-                                            className="text-lg font-mono"
+                                            className="font-mono text-lg"
                                         />
                                     </div>
                                     <Button
@@ -593,12 +864,16 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                 </div>
 
                                 {searchMessage && (
-                                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
-                                        <p className="text-amber-800">{searchMessage}</p>
+                                    <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                                        <p className="text-amber-800">
+                                            {searchMessage}
+                                        </p>
                                         <Button
                                             type="button"
                                             variant="outline"
-                                            onClick={() => setShowCreateSupplier(true)}
+                                            onClick={() =>
+                                                setShowCreateSupplier(true)
+                                            }
                                             className="border-amber-400 text-amber-700 hover:bg-amber-100"
                                         >
                                             <UserPlus className="mr-2 h-4 w-4" />
@@ -606,25 +881,6 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                         </Button>
                                     </div>
                                 )}
-
-                                {/* Opción alternativa: seleccionar de la lista */}
-                                <div className="pt-4 border-t">
-                                    <p className="text-sm text-muted-foreground mb-2">
-                                        O selecciona un proveedor existente de la lista:
-                                    </p>
-                                    <Select value={supplierId} onValueChange={handleSupplierChange}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecciona un proveedor" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {suppliers.map((supplier) => (
-                                                <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                                                    {supplier.code ? `[${supplier.code}] ` : ''}{supplier.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
                             </CardContent>
                         </Card>
                     )}
@@ -636,7 +892,9 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Truck className="h-5 w-5 text-muted-foreground" />
-                                        <CardTitle>Información de la Entrega</CardTitle>
+                                        <CardTitle>
+                                            Información de la Entrega
+                                        </CardTitle>
                                     </div>
                                     <Button
                                         type="button"
@@ -649,35 +907,48 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid gap-4 sm:grid-cols-3">
+                                <div className="grid gap-4 sm:grid-cols-1">
                                     <div className="space-y-2">
                                         <Label>Proveedor</Label>
-                                        <div className="p-3 bg-muted/50 rounded-lg">
-                                            <p className="font-medium">{selectedSupplier.name}</p>
+                                        <div className="rounded-lg bg-muted/50 p-3">
+                                            <p className="font-medium">
+                                                {selectedSupplier.name}
+                                            </p>
                                             {selectedSupplier.code && (
-                                                <p className="text-sm text-muted-foreground font-mono">
-                                                    Código: {selectedSupplier.code}
+                                                <p className="font-mono text-sm text-muted-foreground">
+                                                    Código:{' '}
+                                                    {selectedSupplier.code}
                                                 </p>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Fecha de Entrega *</Label>
-                                        <Input
-                                            type="date"
-                                            value={deliveryDate}
-                                            onChange={(e) => setDeliveryDate(e.target.value)}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Hora de Entrega *</Label>
-                                        <Input
-                                            type="time"
-                                            value={deliveryTime}
-                                            onChange={(e) => setDeliveryTime(e.target.value)}
-                                            required
-                                        />
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label>Fecha de Entrega *</Label>
+                                            <Input
+                                                type="date"
+                                                value={deliveryDate}
+                                                onChange={(e) =>
+                                                    setDeliveryDate(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Hora de Entrega *</Label>
+                                            <Input
+                                                type="time"
+                                                value={deliveryTime}
+                                                onChange={(e) =>
+                                                    setDeliveryTime(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -690,43 +961,148 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                             <CardHeader>
                                 <CardTitle>Variedades a Ingresar</CardTitle>
                                 <CardDescription>
-                                    Selecciona las variedades que entrega el proveedor
+                                    {supplierVarieties.length > 0
+                                        ? 'Selecciona las variedades que entrega el proveedor'
+                                        : 'Agrega las variedades manualmente para este proveedor'}
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                {availableVarieties.length === 0 && supplierVarieties.length > 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center py-2">
-                                        Ya agregaste todas las variedades disponibles
-                                    </p>
-                                ) : availableVarieties.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center py-2">
-                                        Este proveedor no tiene variedades registradas.
-                                        <Link href={`/suppliers/${supplierId}/edit`} className="text-primary ml-1 underline">
-                                            Agregar variedades
-                                        </Link>
-                                    </p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {Object.entries(groupedAvailableVarieties).map(([speciesName, varieties]) => (
-                                            <div key={speciesName} className="space-y-2">
-                                                <span className="text-sm font-medium text-muted-foreground">{speciesName}:</span>
-                                                <div className="flex flex-wrap gap-2 ml-4">
-                                                    {varieties.map((sv) => (
-                                                        <Button
-                                                            key={sv.id}
+                            <CardContent className="space-y-4">
+                                {/* Formulario para agregar variedad manual */}
+                                <div className="rounded-lg border bg-muted/30 p-4">
+                                    <p className="mb-3 text-sm font-medium">Agregar nueva variedad:</p>
+                                    <div className="flex flex-wrap items-end gap-3">
+                                        {/* Campo Especie con autocompletado */}
+                                        <div className="relative min-w-[150px] flex-1 space-y-1">
+                                            <Label className="text-xs">Especie *</Label>
+                                            <Input
+                                                type="text"
+                                                value={newSpeciesName}
+                                                onChange={(e) => handleSpeciesChange(e.target.value)}
+                                                onFocus={() => {
+                                                    if (newSpeciesName.trim() && filteredSpecies.length > 0) {
+                                                        setShowSpeciesSuggestions(true);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    // Delay para permitir click en sugerencia
+                                                    setTimeout(() => setShowSpeciesSuggestions(false), 200);
+                                                }}
+                                                placeholder="Ej: ROSA"
+                                                className="h-9 uppercase"
+                                                autoComplete="off"
+                                            />
+                                            {/* Lista de sugerencias de especies */}
+                                            {showSpeciesSuggestions && filteredSpecies.length > 0 && (
+                                                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-40 overflow-auto rounded-md border bg-popover shadow-md">
+                                                    {filteredSpecies.map((species) => (
+                                                        <button
+                                                            key={species.id}
                                                             type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => addVariety(sv)}
-                                                            className="hover:bg-primary hover:text-primary-foreground"
+                                                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                                            onMouseDown={(e) => e.preventDefault()}
+                                                            onClick={() => selectSpecies(species)}
                                                         >
-                                                            <Plus className="mr-1 h-3 w-3" />
-                                                            {sv.variety_name}
-                                                        </Button>
+                                                            {species.name.toUpperCase()}
+                                                        </button>
                                                     ))}
                                                 </div>
+                                            )}
+                                        </div>
+                                        {/* Campo Variedad con autocompletado */}
+                                        <div className="relative min-w-[150px] flex-1 space-y-1">
+                                            <Label className="text-xs">Variedad *</Label>
+                                            <Input
+                                                type="text"
+                                                value={newVarietyName}
+                                                onChange={(e) => handleVarietyChange(e.target.value)}
+                                                onFocus={() => {
+                                                    if (newVarietyName.trim() && filteredVarieties.length > 0) {
+                                                        setShowVarietySuggestions(true);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    // Delay para permitir click en sugerencia
+                                                    setTimeout(() => setShowVarietySuggestions(false), 200);
+                                                }}
+                                                placeholder="Ej: FREEDOM"
+                                                className="h-9 uppercase"
+                                                autoComplete="off"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        setShowVarietySuggestions(false);
+                                                        addManualVariety();
+                                                    }
+                                                }}
+                                            />
+                                            {/* Lista de sugerencias de variedades */}
+                                            {showVarietySuggestions && filteredVarieties.length > 0 && (
+                                                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-40 overflow-auto rounded-md border bg-popover shadow-md">
+                                                    {filteredVarieties.map((variety) => (
+                                                        <button
+                                                            key={variety.id}
+                                                            type="button"
+                                                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                                            onMouseDown={(e) => e.preventDefault()}
+                                                            onClick={() => selectVariety(variety)}
+                                                        >
+                                                            {variety.name.toUpperCase()}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            onClick={addManualVariety}
+                                            disabled={!newSpeciesName.trim() || !newVarietyName.trim()}
+                                            size="sm"
+                                            className="h-9"
+                                        >
+                                            <Plus className="mr-1 h-4 w-4" />
+                                            Agregar
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Variedades registradas del proveedor */}
+                                {supplierVarieties.length > 0 && (
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-medium text-muted-foreground">
+                                            O selecciona de las variedades registradas:
+                                        </p>
+                                        {availableVarieties.length === 0 ? (
+                                            <p className="py-2 text-center text-sm text-muted-foreground">
+                                                Ya agregaste todas las variedades disponibles
+                                            </p>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {Object.entries(groupedAvailableVarieties).map(
+                                                    ([speciesName, varieties]) => (
+                                                        <div key={speciesName} className="space-y-2">
+                                                            <span className="text-sm font-medium text-muted-foreground">
+                                                                {speciesName}:
+                                                            </span>
+                                                            <div className="ml-4 flex flex-wrap gap-2">
+                                                                {varieties.map((sv) => (
+                                                                    <Button
+                                                                        key={sv.id}
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => addVariety(sv)}
+                                                                        className="hover:bg-primary hover:text-primary-foreground"
+                                                                    >
+                                                                        <Plus className="mr-1 h-3 w-3" />
+                                                                        {sv.variety_name}
+                                                                    </Button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ),
+                                                )}
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 )}
                             </CardContent>
@@ -737,13 +1113,41 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                     {entries.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-lg font-semibold">Productos Ingresados ({entries.length})</h2>
+                                <h2 className="text-lg font-semibold">
+                                    Productos Ingresados ({entries.length})
+                                </h2>
                                 <div className="flex gap-4 text-sm">
-                                    <span>Total: <strong className="text-primary">{globalTotals.totalQuantity}</strong></span>
-                                    <span>Exportable: <strong className="text-green-600">{globalTotals.totalExportable}</strong></span>
-                                    <span>Local: <strong className="text-amber-600">{globalTotals.totalLocal}</strong></span>
-                                    <span className={globalTotals.remaining === 0 ? 'text-green-600' : globalTotals.remaining < 0 ? 'text-destructive' : 'text-amber-600'}>
-                                        Restante: <strong>{globalTotals.remaining}</strong>
+                                    <span>
+                                        Total:{' '}
+                                        <strong className="text-primary">
+                                            {globalTotals.totalQuantity}
+                                        </strong>
+                                    </span>
+                                    <span>
+                                        Exportable:{' '}
+                                        <strong className="text-green-600">
+                                            {globalTotals.totalExportable}
+                                        </strong>
+                                    </span>
+                                    <span>
+                                        Local:{' '}
+                                        <strong className="text-amber-600">
+                                            {globalTotals.totalLocal}
+                                        </strong>
+                                    </span>
+                                    <span
+                                        className={
+                                            globalTotals.remaining === 0
+                                                ? 'text-green-600'
+                                                : globalTotals.remaining < 0
+                                                  ? 'text-destructive'
+                                                  : 'text-amber-600'
+                                        }
+                                    >
+                                        Restante:{' '}
+                                        <strong>
+                                            {globalTotals.remaining}
+                                        </strong>
                                     </span>
                                 </div>
                             </div>
@@ -751,26 +1155,47 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                             {entries.map((entry, index) => {
                                 const totals = getEntryTotals(entry);
                                 return (
-                                    <Card key={entry.id} className="overflow-hidden">
+                                    <Card
+                                        key={entry.id}
+                                        className="overflow-hidden"
+                                    >
                                         {/* Header de la variedad */}
-                                        <div className="flex items-center justify-between bg-muted/50 px-4 py-3 border-b">
+                                        <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-3">
                                             <div className="flex items-center gap-4">
-                                                <Badge variant="secondary" className="text-xs">#{index + 1}</Badge>
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="text-xs"
+                                                >
+                                                    #{index + 1}
+                                                </Badge>
                                                 <div>
-                                                    <span className="font-semibold">{entry.species_name}</span>
-                                                    <span className="mx-2 text-muted-foreground">-</span>
-                                                    <span>{entry.variety_name}</span>
+                                                    <span className="font-semibold">
+                                                        {entry.species_name}
+                                                    </span>
+                                                    <span className="mx-2 text-muted-foreground">
+                                                        -
+                                                    </span>
+                                                    <span>
+                                                        {entry.variety_name}
+                                                    </span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <div className="flex items-center gap-2">
-                                                    <Label className="text-sm">Cantidad:</Label>
+                                                    <Label className="text-sm">
+                                                        Cantidad:
+                                                    </Label>
                                                     <Input
                                                         type="number"
                                                         min="1"
                                                         value={entry.quantity}
-                                                        onChange={(e) => updateEntryQuantity(entry.id, e.target.value)}
-                                                        className="w-24 h-8"
+                                                        onChange={(e) =>
+                                                            updateEntryQuantity(
+                                                                entry.id,
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className="h-8 w-24"
                                                         placeholder="0"
                                                     />
                                                 </div>
@@ -778,7 +1203,9 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                                     type="button"
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => removeEntry(entry.id)}
+                                                    onClick={() =>
+                                                        removeEntry(entry.id)
+                                                    }
                                                     className="text-destructive hover:text-destructive"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -787,122 +1214,303 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                         </div>
 
                                         {/* Resumen de clasificación */}
-                                        {entry.quantity && Number(entry.quantity) > 0 && (
-                                            <div className="px-4 py-2 bg-muted/20 border-b flex gap-4 text-sm">
-                                                <span>Exp: <strong className="text-green-600">{totals.totalExportable}</strong></span>
-                                                <span>Local: <strong className="text-amber-600">{totals.totalLocal}</strong></span>
-                                                <span className={totals.remaining === 0 ? 'text-green-600' : totals.remaining < 0 ? 'text-destructive' : 'text-amber-600'}>
-                                                    Restante: <strong>{totals.remaining}</strong>
-                                                    {totals.remaining === 0 && <Check className="inline ml-1 h-4 w-4" />}
-                                                </span>
-                                            </div>
-                                        )}
+                                        {entry.quantity &&
+                                            Number(entry.quantity) > 0 && (
+                                                <div className="flex gap-4 border-b bg-muted/20 px-4 py-2 text-sm">
+                                                    <span>
+                                                        Exp:{' '}
+                                                        <strong className="text-green-600">
+                                                            {
+                                                                totals.totalExportable
+                                                            }
+                                                        </strong>
+                                                    </span>
+                                                    <span>
+                                                        Local:{' '}
+                                                        <strong className="text-amber-600">
+                                                            {totals.totalLocal}
+                                                        </strong>
+                                                    </span>
+                                                    <span
+                                                        className={
+                                                            totals.remaining ===
+                                                            0
+                                                                ? 'text-green-600'
+                                                                : totals.remaining <
+                                                                    0
+                                                                  ? 'text-destructive'
+                                                                  : 'text-amber-600'
+                                                        }
+                                                    >
+                                                        Restante:{' '}
+                                                        <strong>
+                                                            {totals.remaining}
+                                                        </strong>
+                                                        {totals.remaining ===
+                                                            0 && (
+                                                            <Check className="ml-1 inline h-4 w-4" />
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            )}
 
                                         {/* Sección Exportable */}
-                                        <Collapsible open={entry.exportableOpen} onOpenChange={() => toggleExportable(entry.id)}>
+                                        <Collapsible
+                                            open={entry.exportableOpen}
+                                            onOpenChange={() =>
+                                                toggleExportable(entry.id)
+                                            }
+                                        >
                                             <CollapsibleTrigger asChild>
-                                                <div className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-muted/30 border-b">
+                                                <div className="flex cursor-pointer items-center justify-between border-b px-4 py-2 hover:bg-muted/30">
                                                     <div className="flex items-center gap-2">
                                                         <Ruler className="h-4 w-4 text-green-600" />
-                                                        <span className="text-sm font-medium">Exportable</span>
-                                                        {totals.totalExportable > 0 && (
-                                                            <Badge className="bg-green-100 text-green-700 text-xs">
-                                                                {totals.totalExportable}
+                                                        <span className="text-sm font-medium">
+                                                            Exportable
+                                                        </span>
+                                                        {totals.totalExportable >
+                                                            0 && (
+                                                            <Badge className="bg-green-100 text-xs text-green-700">
+                                                                {
+                                                                    totals.totalExportable
+                                                                }
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    {entry.exportableOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                    {entry.exportableOpen ? (
+                                                        <ChevronUp className="h-4 w-4" />
+                                                    ) : (
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    )}
                                                 </div>
                                             </CollapsibleTrigger>
                                             <CollapsibleContent>
-                                                <div className="p-4 border-b">
+                                                <div className="border-b p-4">
                                                     <div className="grid gap-3 sm:grid-cols-5 lg:grid-cols-10">
-                                                        {stemSizes.map(({ key, label, unit }) => (
-                                                            <div key={key} className="space-y-1">
-                                                                <Label className="text-xs text-center block">
-                                                                    {label}{unit && <span className="text-muted-foreground"> {unit}</span>}
-                                                                </Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    value={entry.exportable[key as keyof typeof entry.exportable]}
-                                                                    onChange={(e) => updateEntryExportable(entry.id, key, e.target.value)}
-                                                                    className="text-center h-8 text-sm"
-                                                                    placeholder="0"
-                                                                />
-                                                            </div>
-                                                        ))}
+                                                        {stemSizes.map(
+                                                            ({
+                                                                key,
+                                                                label,
+                                                                unit,
+                                                            }) => (
+                                                                <div
+                                                                    key={key}
+                                                                    className="space-y-1"
+                                                                >
+                                                                    <Label className="block text-center text-xs">
+                                                                        {label}
+                                                                        {unit && (
+                                                                            <span className="text-muted-foreground">
+                                                                                {' '}
+                                                                                {
+                                                                                    unit
+                                                                                }
+                                                                            </span>
+                                                                        )}
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        value={
+                                                                            entry
+                                                                                .exportable[
+                                                                                key as keyof typeof entry.exportable
+                                                                            ]
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            updateEntryExportable(
+                                                                                entry.id,
+                                                                                key,
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            )
+                                                                        }
+                                                                        className="h-8 text-center text-sm"
+                                                                        placeholder="0"
+                                                                    />
+                                                                </div>
+                                                            ),
+                                                        )}
                                                     </div>
                                                 </div>
                                             </CollapsibleContent>
                                         </Collapsible>
 
                                         {/* Sección Flor Local */}
-                                        <Collapsible open={entry.localFlowerOpen} onOpenChange={() => toggleLocalFlower(entry.id)}>
+                                        <Collapsible
+                                            open={entry.localFlowerOpen}
+                                            onOpenChange={() =>
+                                                toggleLocalFlower(entry.id)
+                                            }
+                                        >
                                             <CollapsibleTrigger asChild>
-                                                <div className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-muted/30">
+                                                <div className="flex cursor-pointer items-center justify-between px-4 py-2 hover:bg-muted/30">
                                                     <div className="flex items-center gap-2">
                                                         <Flower2 className="h-4 w-4 text-amber-600" />
-                                                        <span className="text-sm font-medium">Flor Local</span>
-                                                        {totals.totalLocal > 0 && (
-                                                            <Badge className="bg-amber-100 text-amber-700 text-xs">
-                                                                {totals.totalLocal}
+                                                        <span className="text-sm font-medium">
+                                                            Flor Local
+                                                        </span>
+                                                        {totals.totalLocal >
+                                                            0 && (
+                                                            <Badge className="bg-amber-100 text-xs text-amber-700">
+                                                                {
+                                                                    totals.totalLocal
+                                                                }
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    {entry.localFlowerOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                    {entry.localFlowerOpen ? (
+                                                        <ChevronUp className="h-4 w-4" />
+                                                    ) : (
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    )}
                                                 </div>
                                             </CollapsibleTrigger>
                                             <CollapsibleContent>
-                                                <div className="p-4 space-y-4">
-                                                    {categories.map((category) => (
-                                                        <div key={category.id} className="space-y-2">
-                                                            <h4 className="text-sm font-medium">{category.name}</h4>
+                                                <div className="space-y-4 p-4">
+                                                    {categories.map(
+                                                        (category) => (
+                                                            <div
+                                                                key={
+                                                                    category.id
+                                                                }
+                                                                className="space-y-2"
+                                                            >
+                                                                <h4 className="text-sm font-medium">
+                                                                    {
+                                                                        category.name
+                                                                    }
+                                                                </h4>
 
-                                                            {(!category.active_subcategories || category.active_subcategories.length === 0) ? (
-                                                                <div className="grid gap-2 sm:grid-cols-2 ml-4">
-                                                                    <Input
-                                                                        type="number"
-                                                                        min="0"
-                                                                        value={entry.localFlower[`cat_${category.id}`] || ''}
-                                                                        onChange={(e) => updateEntryLocalFlower(entry.id, `cat_${category.id}`, e.target.value)}
-                                                                        placeholder="Cantidad"
-                                                                        className="h-8"
-                                                                    />
-                                                                    <Input
-                                                                        type="text"
-                                                                        value={entry.localFlower[`cat_${category.id}_detail`] || ''}
-                                                                        onChange={(e) => updateEntryLocalFlower(entry.id, `cat_${category.id}_detail`, e.target.value)}
-                                                                        placeholder="Detalle (opcional)"
-                                                                        className="h-8"
-                                                                    />
-                                                                </div>
-                                                            ) : (
-                                                                <div className="space-y-2 ml-4">
-                                                                    {category.active_subcategories.map((sub) => (
-                                                                        <div key={sub.id} className="grid gap-2 sm:grid-cols-3 items-center">
-                                                                            <span className="text-sm text-muted-foreground">{sub.name}</span>
-                                                                            <Input
-                                                                                type="number"
-                                                                                min="0"
-                                                                                value={entry.localFlower[`sub_${sub.id}`] || ''}
-                                                                                onChange={(e) => updateEntryLocalFlower(entry.id, `sub_${sub.id}`, e.target.value)}
-                                                                                placeholder="Cantidad"
-                                                                                className="h-8"
-                                                                            />
-                                                                            <Input
-                                                                                type="text"
-                                                                                value={entry.localFlower[`sub_${sub.id}_detail`] || ''}
-                                                                                onChange={(e) => updateEntryLocalFlower(entry.id, `sub_${sub.id}_detail`, e.target.value)}
-                                                                                placeholder="Detalle"
-                                                                                className="h-8"
-                                                                            />
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
+                                                                {!category.active_subcategories ||
+                                                                category
+                                                                    .active_subcategories
+                                                                    .length ===
+                                                                    0 ? (
+                                                                    <div className="ml-4 grid gap-2 sm:grid-cols-2">
+                                                                        <Input
+                                                                            type="number"
+                                                                            min="0"
+                                                                            value={
+                                                                                entry
+                                                                                    .localFlower[
+                                                                                    `cat_${category.id}`
+                                                                                ] ||
+                                                                                ''
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                updateEntryLocalFlower(
+                                                                                    entry.id,
+                                                                                    `cat_${category.id}`,
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                )
+                                                                            }
+                                                                            placeholder="Cantidad"
+                                                                            className="h-8"
+                                                                        />
+                                                                        <Input
+                                                                            type="text"
+                                                                            value={
+                                                                                entry
+                                                                                    .localFlower[
+                                                                                    `cat_${category.id}_detail`
+                                                                                ] ||
+                                                                                ''
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                updateEntryLocalFlower(
+                                                                                    entry.id,
+                                                                                    `cat_${category.id}_detail`,
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                )
+                                                                            }
+                                                                            placeholder="Detalle (opcional)"
+                                                                            className="h-8 uppercase"
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="ml-4 space-y-2">
+                                                                        {category.active_subcategories.map(
+                                                                            (
+                                                                                sub,
+                                                                            ) => (
+                                                                                <div
+                                                                                    key={
+                                                                                        sub.id
+                                                                                    }
+                                                                                    className="grid items-center gap-2 sm:grid-cols-3"
+                                                                                >
+                                                                                    <span className="text-sm text-muted-foreground">
+                                                                                        {
+                                                                                            sub.name
+                                                                                        }
+                                                                                    </span>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        min="0"
+                                                                                        value={
+                                                                                            entry
+                                                                                                .localFlower[
+                                                                                                `sub_${sub.id}`
+                                                                                            ] ||
+                                                                                            ''
+                                                                                        }
+                                                                                        onChange={(
+                                                                                            e,
+                                                                                        ) =>
+                                                                                            updateEntryLocalFlower(
+                                                                                                entry.id,
+                                                                                                `sub_${sub.id}`,
+                                                                                                e
+                                                                                                    .target
+                                                                                                    .value,
+                                                                                            )
+                                                                                        }
+                                                                                        placeholder="Cantidad"
+                                                                                        className="h-8"
+                                                                                    />
+                                                                                    <Input
+                                                                                        type="text"
+                                                                                        value={
+                                                                                            entry
+                                                                                                .localFlower[
+                                                                                                `sub_${sub.id}_detail`
+                                                                                            ] ||
+                                                                                            ''
+                                                                                        }
+                                                                                        onChange={(
+                                                                                            e,
+                                                                                        ) =>
+                                                                                            updateEntryLocalFlower(
+                                                                                                entry.id,
+                                                                                                `sub_${sub.id}_detail`,
+                                                                                                e
+                                                                                                    .target
+                                                                                                    .value,
+                                                                                            )
+                                                                                        }
+                                                                                        placeholder="Detalle"
+                                                                                        className="h-8 uppercase"
+                                                                                    />
+                                                                                </div>
+                                                                            ),
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ),
+                                                    )}
                                                 </div>
                                             </CollapsibleContent>
                                         </Collapsible>
@@ -913,23 +1521,31 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                     )}
 
                     {/* Mensaje cuando no hay entradas */}
-                    {currentStep === 'entry' && selectedSupplier && entries.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
-                            <p>No has seleccionado ninguna variedad</p>
-                            <p className="text-sm">Haz clic en las variedades de arriba para agregarlas</p>
-                        </div>
-                    )}
+                    {currentStep === 'entry' &&
+                        selectedSupplier &&
+                        entries.length === 0 && (
+                            <div className="rounded-lg border border-dashed py-8 text-center text-muted-foreground">
+                                <p>No has seleccionado ninguna variedad</p>
+                                <p className="text-sm">
+                                    Haz clic en las variedades de arriba para
+                                    agregarlas
+                                </p>
+                            </div>
+                        )}
 
                     {/* Botones de acción */}
                     {currentStep === 'entry' && selectedSupplier && (
-                        <div className="flex justify-end gap-4 pt-4 border-t">
+                        <div className="flex justify-end gap-4 border-t pt-4">
                             <Button type="button" variant="outline" asChild>
                                 <Link href="/delivery-flow">
                                     <X className="mr-2 h-4 w-4" />
                                     Cancelar
                                 </Link>
                             </Button>
-                            <Button type="submit" disabled={processing || !canSave}>
+                            <Button
+                                type="submit"
+                                disabled={processing || !canSave}
+                            >
                                 {processing ? (
                                     'Guardando...'
                                 ) : (
@@ -944,18 +1560,24 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                 </form>
 
                 {/* Diálogo para crear nuevo proveedor */}
-                <Dialog open={showCreateSupplier} onOpenChange={setShowCreateSupplier}>
+                <Dialog
+                    open={showCreateSupplier}
+                    onOpenChange={setShowCreateSupplier}
+                >
                     <DialogContent className="sm:max-w-[500px]">
                         <DialogHeader>
                             <DialogTitle>Crear Nuevo Proveedor</DialogTitle>
                             <DialogDescription>
-                                Ingresa los datos del nuevo proveedor para registrarlo en el sistema.
+                                Ingresa los datos del nuevo proveedor para
+                                registrarlo en el sistema.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             {newSupplierErrors.general && (
                                 <Alert variant="destructive">
-                                    <AlertDescription>{newSupplierErrors.general}</AlertDescription>
+                                    <AlertDescription>
+                                        {newSupplierErrors.general}
+                                    </AlertDescription>
                                 </Alert>
                             )}
 
@@ -964,12 +1586,19 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                 <Input
                                     type="text"
                                     value={newSupplier.code}
-                                    onChange={(e) => setNewSupplier(prev => ({ ...prev, code: e.target.value }))}
+                                    onChange={(e) =>
+                                        setNewSupplier((prev) => ({
+                                            ...prev,
+                                            code: e.target.value,
+                                        }))
+                                    }
                                     placeholder="Ej: PROV001"
                                     className="font-mono"
                                 />
                                 {newSupplierErrors.code && (
-                                    <p className="text-sm text-destructive">{newSupplierErrors.code}</p>
+                                    <p className="text-sm text-destructive">
+                                        {newSupplierErrors.code}
+                                    </p>
                                 )}
                             </div>
 
@@ -979,13 +1608,21 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                     type="text"
                                     value={newSupplier.name}
                                     onChange={(e) => {
-                                        const value = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
-                                        setNewSupplier(prev => ({ ...prev, name: value }));
+                                        const value = e.target.value.replace(
+                                            /[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g,
+                                            '',
+                                        );
+                                        setNewSupplier((prev) => ({
+                                            ...prev,
+                                            name: value,
+                                        }));
                                     }}
                                     placeholder="Nombre del proveedor"
                                 />
                                 {newSupplierErrors.name && (
-                                    <p className="text-sm text-destructive">{newSupplierErrors.name}</p>
+                                    <p className="text-sm text-destructive">
+                                        {newSupplierErrors.name}
+                                    </p>
                                 )}
                             </div>
 
@@ -994,11 +1631,18 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                 <Input
                                     type="email"
                                     value={newSupplier.email}
-                                    onChange={(e) => setNewSupplier(prev => ({ ...prev, email: e.target.value }))}
+                                    onChange={(e) =>
+                                        setNewSupplier((prev) => ({
+                                            ...prev,
+                                            email: e.target.value,
+                                        }))
+                                    }
                                     placeholder="correo@ejemplo.com"
                                 />
                                 {newSupplierErrors.email && (
-                                    <p className="text-sm text-destructive">{newSupplierErrors.email}</p>
+                                    <p className="text-sm text-destructive">
+                                        {newSupplierErrors.email}
+                                    </p>
                                 )}
                             </div>
 
@@ -1009,14 +1653,21 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                         type="text"
                                         value={newSupplier.phone}
                                         onChange={(e) => {
-                                            const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                                            setNewSupplier(prev => ({ ...prev, phone: value }));
+                                            const value = e.target.value
+                                                .replace(/\D/g, '')
+                                                .slice(0, 10);
+                                            setNewSupplier((prev) => ({
+                                                ...prev,
+                                                phone: value,
+                                            }));
                                         }}
                                         placeholder="0999999999"
                                         maxLength={10}
                                     />
                                     {newSupplierErrors.phone && (
-                                        <p className="text-sm text-destructive">{newSupplierErrors.phone}</p>
+                                        <p className="text-sm text-destructive">
+                                            {newSupplierErrors.phone}
+                                        </p>
                                     )}
                                 </div>
 
@@ -1026,14 +1677,21 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                         type="text"
                                         value={newSupplier.ruc}
                                         onChange={(e) => {
-                                            const value = e.target.value.replace(/\D/g, '').slice(0, 13);
-                                            setNewSupplier(prev => ({ ...prev, ruc: value }));
+                                            const value = e.target.value
+                                                .replace(/\D/g, '')
+                                                .slice(0, 13);
+                                            setNewSupplier((prev) => ({
+                                                ...prev,
+                                                ruc: value,
+                                            }));
                                         }}
                                         placeholder="1234567890001"
                                         maxLength={13}
                                     />
                                     {newSupplierErrors.ruc && (
-                                        <p className="text-sm text-destructive">{newSupplierErrors.ruc}</p>
+                                        <p className="text-sm text-destructive">
+                                            {newSupplierErrors.ruc}
+                                        </p>
                                     )}
                                 </div>
                             </div>
@@ -1054,7 +1712,109 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
                                 onClick={handleCreateSupplier}
                                 disabled={creatingSupplier}
                             >
-                                {creatingSupplier ? 'Creando...' : 'Crear Proveedor'}
+                                {creatingSupplier
+                                    ? 'Creando...'
+                                    : 'Crear Proveedor'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Diálogo de entrega existente del día */}
+                <Dialog open={showExistingDeliveryDialog} onOpenChange={setShowExistingDeliveryDialog}>
+                    <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-amber-600">
+                                <Truck className="h-5 w-5" />
+                                Entrega existente encontrada
+                            </DialogTitle>
+                            <DialogDescription className="pt-2">
+                                Este proveedor ya realizó una entrega el día de hoy.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {existingDelivery && selectedSupplier && (
+                            <div className="space-y-4">
+                                {/* Info del proveedor */}
+                                <div className="rounded-lg border bg-muted/30 p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                                            <Truck className="h-5 w-5 text-primary" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold">{selectedSupplier.name}</p>
+                                            <p className="text-sm text-muted-foreground">{selectedSupplier.code}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Detalles de la entrega existente */}
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                                    <p className="text-sm font-medium text-amber-800 mb-3">
+                                        Detalles de la entrega de hoy:
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <p className="text-amber-600">Hora de entrega</p>
+                                            <p className="font-semibold text-amber-900">
+                                                {new Date(existingDelivery.entry_datetime).toLocaleTimeString('es-EC', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    hour12: true,
+                                                    timeZone: 'America/Guayaquil',
+                                                })}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-amber-600">Variedades ingresadas</p>
+                                            <p className="font-semibold text-amber-900">{existingDelivery.total_entries}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-amber-600">Total de tallos</p>
+                                            <p className="text-2xl font-bold text-amber-900">{existingDelivery.total_stems.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Pregunta */}
+                                <div className="text-center py-2">
+                                    <p className="text-sm text-muted-foreground">
+                                        ¿Qué deseas hacer?
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <DialogFooter className="flex-col gap-2 sm:flex-col">
+                            <Button
+                                type="button"
+                                onClick={handleEditExistingDelivery}
+                                className="w-full bg-amber-600 hover:bg-amber-700"
+                            >
+                                <Flower2 className="mr-2 h-4 w-4" />
+                                Editar / Agregar a la entrega existente
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleContinueNewDelivery}
+                                className="w-full"
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Crear una nueva entrega de todas formas
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => {
+                                    setShowExistingDeliveryDialog(false);
+                                    setExistingDelivery(null);
+                                    setSelectedSupplier(null);
+                                    setSupplierId('');
+                                }}
+                                className="w-full text-muted-foreground"
+                            >
+                                Cancelar y buscar otro proveedor
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -1063,4 +1823,3 @@ export default function CreateDeliveryFlow({ suppliers, categories }: Props) {
         </AppLayout>
     );
 }
-
