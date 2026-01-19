@@ -28,6 +28,7 @@ interface SupplierVariety {
 
 interface Supplier {
     id: number;
+    code: string;
     name: string;
     email: string;
     phone: string;
@@ -110,6 +111,7 @@ export default function SuppliersIndex({ suppliers }: Props) {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>Código</TableHead>
                                 <TableHead>Nombre</TableHead>
                                 <TableHead>RUC</TableHead>
                                 <TableHead>Email</TableHead>
@@ -132,6 +134,7 @@ export default function SuppliersIndex({ suppliers }: Props) {
                             ) : (
                                 suppliers.data.map((supplier) => (
                                     <TableRow key={supplier.id}>
+                                        <TableCell className="font-mono text-sm">{supplier.code || '-'}</TableCell>
                                         <TableCell className="font-medium">{supplier.name}</TableCell>
                                         <TableCell>{supplier.ruc}</TableCell>
                                         <TableCell>{supplier.email}</TableCell>

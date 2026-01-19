@@ -53,6 +53,7 @@ class SupplierController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'code' => ['required', 'string', 'max:20', 'unique:suppliers,code'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:suppliers'],
             'phone' => ['required', 'string', 'max:20'],
@@ -65,6 +66,7 @@ class SupplierController extends Controller
 
         DB::transaction(function () use ($validated) {
             $supplier = Supplier::create([
+                'code' => $validated['code'],
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],
@@ -152,6 +154,7 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier): RedirectResponse
     {
         $validated = $request->validate([
+            'code' => ['required', 'string', 'max:20', Rule::unique('suppliers')->ignore($supplier->id)],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('suppliers')->ignore($supplier->id)],
             'phone' => ['required', 'string', 'max:20'],
@@ -164,6 +167,7 @@ class SupplierController extends Controller
 
         DB::transaction(function () use ($validated, $supplier) {
             $supplier->update([
+                'code' => $validated['code'],
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],

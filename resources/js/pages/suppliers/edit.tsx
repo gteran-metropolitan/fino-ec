@@ -13,6 +13,7 @@ import { type BreadcrumbItem } from '@/types';
 
 interface Supplier {
     id: number;
+    code: string;
     name: string;
     email: string;
     phone: string;
@@ -99,6 +100,7 @@ export default function EditSupplier({ supplier, supplierVarieties, speciesList,
     ];
 
     const { data, setData, put, processing, errors } = useForm({
+        code: supplier.code || '',
         name: supplier.name,
         email: supplier.email,
         phone: supplier.phone,
@@ -268,6 +270,25 @@ export default function EditSupplier({ supplier, supplierVarieties, speciesList,
                 <form onSubmit={submit} className="space-y-6">
                     <div className="grid gap-6 lg:grid-cols-2">
                         <div className="space-y-2">
+                            <Label htmlFor="code">Código de Proveedor</Label>
+                            <Input
+                                id="code"
+                                type="text"
+                                value={data.code}
+                                onChange={(e) => setData('code', e.target.value.toUpperCase())}
+                                required
+                                autoFocus
+                                placeholder="Ej: PROV001"
+                                className="font-mono"
+                                maxLength={20}
+                            />
+                            <InputError message={errors.code} />
+                            <p className="text-xs text-muted-foreground">
+                                Código único para identificar al proveedor
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
                             <Label htmlFor="name">Nombre</Label>
                             <Input
                                 id="name"
@@ -275,7 +296,6 @@ export default function EditSupplier({ supplier, supplierVarieties, speciesList,
                                 value={data.name}
                                 onChange={(e) => handleNameChange(e.target.value)}
                                 required
-                                autoFocus
                                 placeholder="Nombre del proveedor"
                             />
                             <InputError message={errors.name} />

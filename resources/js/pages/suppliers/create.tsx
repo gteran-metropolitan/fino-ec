@@ -67,6 +67,7 @@ export default function CreateSupplier({ speciesList, varietiesList }: Props) {
     const [newVarietyInput, setNewVarietyInput] = useState<{ [key: number]: string }>({});
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        code: '',
         name: '',
         email: '',
         phone: '',
@@ -241,6 +242,25 @@ export default function CreateSupplier({ speciesList, varietiesList }: Props) {
                 <form onSubmit={submit} className="space-y-6">
                     <div className="grid gap-6 lg:grid-cols-2">
                         <div className="space-y-2">
+                            <Label htmlFor="code">Código de Proveedor</Label>
+                            <Input
+                                id="code"
+                                type="text"
+                                value={data.code}
+                                onChange={(e) => setData('code', e.target.value.toUpperCase())}
+                                required
+                                autoFocus
+                                placeholder="Ej: PROV001"
+                                className="font-mono"
+                                maxLength={20}
+                            />
+                            <InputError message={errors.code} />
+                            <p className="text-xs text-muted-foreground">
+                                Código único para identificar al proveedor
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
                             <Label htmlFor="name">Nombre</Label>
                             <Input
                                 id="name"
@@ -248,7 +268,6 @@ export default function CreateSupplier({ speciesList, varietiesList }: Props) {
                                 value={data.name}
                                 onChange={(e) => handleNameChange(e.target.value)}
                                 required
-                                autoFocus
                                 placeholder="Nombre del proveedor"
                             />
                             <InputError message={errors.name} />
