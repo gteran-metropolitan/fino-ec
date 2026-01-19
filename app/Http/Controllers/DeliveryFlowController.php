@@ -118,6 +118,18 @@ class DeliveryFlowController extends Controller
             'entries.*.exportable.cm_110' => ['nullable', 'integer', 'min:0'],
             'entries.*.exportable.cm_120' => ['nullable', 'integer', 'min:0'],
             'entries.*.exportable.sobrante' => ['nullable', 'integer', 'min:0'],
+            'entries.*.prices' => ['nullable', 'array'],
+            'entries.*.prices.price_40' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_50' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_60' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_70' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_80' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_90' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_100' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_110' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_120' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.prices.price_sobrante' => ['nullable', 'numeric', 'min:0'],
+            'entries.*.total_price' => ['nullable', 'numeric', 'min:0'],
             'entries.*.rejections' => ['nullable', 'array'],
             'entries.*.rejections.*.category_id' => ['required', 'exists:rejection_categories,id'],
             'entries.*.rejections.*.subcategory_id' => ['nullable', 'exists:rejection_subcategories,id'],
@@ -169,25 +181,38 @@ class DeliveryFlowController extends Controller
 
                 // Si tiene datos de exportable, crear clasificación
                 $exportable = $entryData['exportable'] ?? [];
+                $prices = $entryData['prices'] ?? [];
                 $rejections = $entryData['rejections'] ?? [];
 
                 $totalExportable = array_sum($exportable);
                 $totalLocal = collect($rejections)->sum('quantity');
+                $totalPrice = $entryData['total_price'] ?? 0;
 
                 if ($totalExportable > 0 || $totalLocal > 0) {
                     $classification = StemClassification::create([
                         'product_entry_id' => $productEntry->id,
                         'cm_40' => $exportable['cm_40'] ?? 0,
+                        'price_40' => $prices['price_40'] ?? 0,
                         'cm_50' => $exportable['cm_50'] ?? 0,
+                        'price_50' => $prices['price_50'] ?? 0,
                         'cm_60' => $exportable['cm_60'] ?? 0,
+                        'price_60' => $prices['price_60'] ?? 0,
                         'cm_70' => $exportable['cm_70'] ?? 0,
+                        'price_70' => $prices['price_70'] ?? 0,
                         'cm_80' => $exportable['cm_80'] ?? 0,
+                        'price_80' => $prices['price_80'] ?? 0,
                         'cm_90' => $exportable['cm_90'] ?? 0,
+                        'price_90' => $prices['price_90'] ?? 0,
                         'cm_100' => $exportable['cm_100'] ?? 0,
+                        'price_100' => $prices['price_100'] ?? 0,
                         'cm_110' => $exportable['cm_110'] ?? 0,
+                        'price_110' => $prices['price_110'] ?? 0,
                         'cm_120' => $exportable['cm_120'] ?? 0,
+                        'price_120' => $prices['price_120'] ?? 0,
                         'sobrante' => $exportable['sobrante'] ?? 0,
+                        'price_sobrante' => $prices['price_sobrante'] ?? 0,
                         'total_classified' => $totalExportable,
+                        'total_price' => $totalPrice,
                         'is_complete' => ($totalExportable + $totalLocal) === $entryData['quantity'],
                         'local_quantity' => $totalLocal,
                         'local_is_complete' => $totalLocal > 0,
