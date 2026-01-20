@@ -18,6 +18,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import { formatDateEC, getTodayTitleEC, isTodayEC } from '@/lib/date-utils';
 import { type BreadcrumbItem } from '@/types';
 
 interface Supplier {
@@ -93,32 +94,8 @@ export default function DeliveryFlowIndex({ groups }: Props) {
         }
     };
 
-    // Obtener la fecha actual en Ecuador
-    const getCurrentDateEcuador = () => {
-        const now = new Date();
-        return now.toLocaleDateString('es-EC', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-            timeZone: 'America/Guayaquil',
-        });
-    };
-
-    // Verificar si una fecha es del día actual
-    const isToday = (dateString: string) => {
-        const entryDate = new Date(dateString);
-        const today = new Date();
-
-        // Obtener las fechas en zona horaria de Ecuador
-        const entryDateStr = entryDate.toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
-        const todayStr = today.toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' });
-
-        return entryDateStr === todayStr;
-    };
-
     // Filtrar solo las entregas del día actual
-    const todayGroups = groups.data.filter(group => isToday(group.entry_datetime));
+    const todayGroups = groups.data.filter(group => isTodayEC(group.entry_datetime));
 
     const getProgress = (group: ProductEntryGroup) => {
         if (group.total_stems === 0) return 0;
@@ -169,7 +146,7 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                             Entrega y Postcosecha
                         </h1>
                         <p className="text-sm text-muted-foreground capitalize">
-                            {getCurrentDateEcuador()}
+                            {getTodayTitleEC()}
                         </p>
                     </div>
                     <Button asChild>
@@ -240,33 +217,10 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                                         <TableCell className="font-medium">
                                             <div>
                                                 <p className="text-base">
-                                                    {new Date(
-                                                        group.entry_datetime,
-                                                    ).toLocaleString('es-EC', {
-                                                        day: '2-digit',
-                                                        month: '2-digit',
-                                                        year: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                        hour12: true,
-                                                        timeZone:
-                                                            'America/Guayaquil',
-                                                    })}
+                                                    {formatDateEC(group.entry_datetime).short}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground capitalize">
-                                                    {new Date(
-                                                        group.entry_datetime,
-                                                    ).toLocaleDateString(
-                                                        'es-EC',
-                                                        {
-                                                            weekday: 'long',
-                                                            day: 'numeric',
-                                                            month: 'long',
-                                                            year: 'numeric',
-                                                            timeZone:
-                                                                'America/Guayaquil',
-                                                        },
-                                                    )}
+                                                    {formatDateEC(group.entry_datetime).long}
                                                 </p>
                                             </div>
                                         </TableCell>

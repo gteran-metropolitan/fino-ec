@@ -19,6 +19,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import { formatDateEC } from '@/lib/date-utils';
 import { type BreadcrumbItem } from '@/types';
 
 interface Supplier {
@@ -94,27 +95,6 @@ export default function ProductEntriesIndex({ entries }: Props) {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return {
-            short: date.toLocaleString('es-EC', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-                timeZone: 'America/Guayaquil',
-            }),
-            long: date.toLocaleDateString('es-EC', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                timeZone: 'America/Guayaquil',
-            }),
-        };
-    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -163,8 +143,8 @@ export default function ProductEntriesIndex({ entries }: Props) {
                                     <TableRow key={entry.id}>
                                         <TableCell className="font-medium">
                                             <div>
-                                                <p>{formatDate(entry.delivery_date).short}</p>
-                                                <p className="text-xs text-muted-foreground capitalize">{formatDate(entry.delivery_date).long}</p>
+                                                <p>{formatDateEC(entry.delivery_date).short}</p>
+                                                <p className="text-xs text-muted-foreground capitalize">{formatDateEC(entry.delivery_date).long}</p>
                                             </div>
                                         </TableCell>
                                         <TableCell>{entry.supplier.name}</TableCell>
