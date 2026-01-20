@@ -3,9 +3,10 @@ import { FormEventHandler, useMemo } from 'react';
 
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NumericInput } from '@/components/ui/numeric-input';
 import AppLayout from '@/layouts/app-layout';
+import { formatDateEC } from '@/lib/date-utils';
 import { type BreadcrumbItem } from '@/types';
 
 interface Supplier {
@@ -131,27 +132,6 @@ export default function ClassifyProductEntry({ entry, classification }: Props) {
         post(`/product-entries/${entry.id}/classify`);
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return {
-            short: date.toLocaleString('es-EC', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-                timeZone: 'America/Guayaquil',
-            }),
-            long: date.toLocaleDateString('es-EC', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                timeZone: 'America/Guayaquil',
-            }),
-        };
-    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -177,8 +157,8 @@ export default function ClassifyProductEntry({ entry, classification }: Props) {
                         </div>
                         <div>
                             <p className="text-xs text-muted-foreground">Fecha de Entrega</p>
-                            <p className="font-medium">{formatDate(entry.delivery_date).short}</p>
-                            <p className="text-xs text-muted-foreground capitalize">{formatDate(entry.delivery_date).long}</p>
+                            <p className="font-medium">{formatDateEC(entry.delivery_date).short}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{formatDateEC(entry.delivery_date).long}</p>
                         </div>
                         <div>
                             <p className="text-xs text-muted-foreground">Cantidad Total</p>

@@ -43,7 +43,7 @@ class LocalFlowerController extends Controller
         $productEntry->load(['supplier', 'species', 'variety', 'stemClassification.rejections']);
 
         // Si no tiene clasificación exportable, no puede agregar flor local
-        if (!$productEntry->stemClassification) {
+        if (! $productEntry->stemClassification) {
             return redirect()->route('product-entries.classify', $productEntry)
                 ->with('error', 'Primero debe clasificar el exportable.');
         }
@@ -74,7 +74,7 @@ class LocalFlowerController extends Controller
 
         $classification = $productEntry->stemClassification;
 
-        if (!$classification) {
+        if (! $classification) {
             return back()->withErrors([
                 'general' => 'Primero debe clasificar el exportable.',
             ]);
@@ -95,6 +95,7 @@ class LocalFlowerController extends Controller
                 ]);
             } else {
                 $excess = abs($difference);
+
                 return back()->withErrors([
                     'total' => "Excede por {$excess} unidades el total de {$productEntry->quantity}. Exportable: {$classification->total_classified}, Flor Local: {$localQuantity}",
                 ]);

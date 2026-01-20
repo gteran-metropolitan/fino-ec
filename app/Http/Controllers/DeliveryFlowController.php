@@ -50,7 +50,7 @@ class DeliveryFlowController extends Controller
                 'supplier' => $group->supplier,
                 'entry_datetime' => $group->entry_datetime,
                 'notes' => $group->notes,
-                'entries' => $group->entries->map(fn($e) => [
+                'entries' => $group->entries->map(fn ($e) => [
                     'id' => $e->id,
                     'quantity' => $e->quantity,
                     'stem_classification' => $e->stemClassification,
@@ -137,7 +137,7 @@ class DeliveryFlowController extends Controller
             'entries.*.rejections.*.detail' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $entryDateTime = $validated['delivery_date'] . ' ' . $validated['delivery_time'] . ':00';
+        $entryDateTime = $validated['delivery_date'].' '.$validated['delivery_time'].':00';
 
         DB::transaction(function () use ($validated, $entryDateTime) {
             // Crear grupo de entrada
@@ -376,7 +376,7 @@ class DeliveryFlowController extends Controller
                 } else {
                     // Actualizar entrada existente
                     $productEntry = ProductEntry::find($entryData['id']);
-                    if (!$productEntry || $productEntry->product_entry_group_id !== $deliveryFlow->id) {
+                    if (! $productEntry || $productEntry->product_entry_group_id !== $deliveryFlow->id) {
                         continue;
                     }
 
@@ -456,7 +456,7 @@ class DeliveryFlowController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $entryDateTime = $validated['delivery_date'] . ' ' . $validated['delivery_time'] . ':00';
+        $entryDateTime = $validated['delivery_date'].' '.$validated['delivery_time'].':00';
 
         $deliveryFlow->update([
             'supplier_id' => $validated['supplier_id'],
@@ -494,7 +494,7 @@ class DeliveryFlowController extends Controller
     {
         $code = $request->input('code');
 
-        if (!$code) {
+        if (! $code) {
             return response()->json([
                 'found' => false,
                 'message' => 'El código es requerido.',
@@ -506,7 +506,7 @@ class DeliveryFlowController extends Controller
             ->with(['supplierVarieties.species', 'supplierVarieties.variety'])
             ->first();
 
-        if (!$supplier) {
+        if (! $supplier) {
             return response()->json([
                 'found' => false,
                 'message' => "El proveedor con código '{$code}' no existe. ¿Deseas crear uno nuevo?",
@@ -582,4 +582,3 @@ class DeliveryFlowController extends Controller
         ]);
     }
 }
-

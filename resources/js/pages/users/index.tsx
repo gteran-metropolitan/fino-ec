@@ -18,6 +18,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import { formatDateEC } from '@/lib/date-utils';
 import { type BreadcrumbItem, type User } from '@/types';
 
 interface PaginatedUsers {
@@ -127,7 +128,7 @@ export default function UsersIndex({ users }: Props) {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            {new Date(user.created_at).toLocaleDateString('es-ES')}
+                                            {formatDateEC(user.created_at).dateOnly}
                                         </TableCell>
                                         <TableCell>
                                             <DropdownMenu>
