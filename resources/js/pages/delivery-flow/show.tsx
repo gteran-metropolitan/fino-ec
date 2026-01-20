@@ -229,28 +229,28 @@ export default function ShowDeliveryFlow({ group, categories, existingSpecies = 
                 addQuantity: '',
                 removeQuantity: '',
                 exportable: {
-                    cm_40: classification?.cm_40?.toString() || '',
-                    cm_50: classification?.cm_50?.toString() || '',
-                    cm_60: classification?.cm_60?.toString() || '',
-                    cm_70: classification?.cm_70?.toString() || '',
-                    cm_80: classification?.cm_80?.toString() || '',
-                    cm_90: classification?.cm_90?.toString() || '',
-                    cm_100: classification?.cm_100?.toString() || '',
-                    cm_110: classification?.cm_110?.toString() || '',
-                    cm_120: classification?.cm_120?.toString() || '',
-                    sobrante: classification?.sobrante?.toString() || '',
+                    cm_40: Number(classification?.cm_40) > 0 ? classification?.cm_40?.toString() ?? '' : '',
+                    cm_50: Number(classification?.cm_50) > 0 ? classification?.cm_50?.toString() ?? '' : '',
+                    cm_60: Number(classification?.cm_60) > 0 ? classification?.cm_60?.toString() ?? '' : '',
+                    cm_70: Number(classification?.cm_70) > 0 ? classification?.cm_70?.toString() ?? '' : '',
+                    cm_80: Number(classification?.cm_80) > 0 ? classification?.cm_80?.toString() ?? '' : '',
+                    cm_90: Number(classification?.cm_90) > 0 ? classification?.cm_90?.toString() ?? '' : '',
+                    cm_100: Number(classification?.cm_100) > 0 ? classification?.cm_100?.toString() ?? '' : '',
+                    cm_110: Number(classification?.cm_110) > 0 ? classification?.cm_110?.toString() ?? '' : '',
+                    cm_120: Number(classification?.cm_120) > 0 ? classification?.cm_120?.toString() ?? '' : '',
+                    sobrante: Number(classification?.sobrante) > 0 ? classification?.sobrante?.toString() ?? '' : '',
                 },
                 prices: {
-                    price_40: Number(classification?.price_40) > 0 ? classification.price_40.toString() : '',
-                    price_50: Number(classification?.price_50) > 0 ? classification.price_50.toString() : '',
-                    price_60: Number(classification?.price_60) > 0 ? classification.price_60.toString() : '',
-                    price_70: Number(classification?.price_70) > 0 ? classification.price_70.toString() : '',
-                    price_80: Number(classification?.price_80) > 0 ? classification.price_80.toString() : '',
-                    price_90: Number(classification?.price_90) > 0 ? classification.price_90.toString() : '',
-                    price_100: Number(classification?.price_100) > 0 ? classification.price_100.toString() : '',
-                    price_110: Number(classification?.price_110) > 0 ? classification.price_110.toString() : '',
-                    price_120: Number(classification?.price_120) > 0 ? classification.price_120.toString() : '',
-                    price_sobrante: Number(classification?.price_sobrante) > 0 ? classification.price_sobrante.toString() : '',
+                    price_40: Number(classification?.price_40) > 0 ? classification?.price_40?.toString() ?? '' : '',
+                    price_50: Number(classification?.price_50) > 0 ? classification?.price_50?.toString() ?? '' : '',
+                    price_60: Number(classification?.price_60) > 0 ? classification?.price_60?.toString() ?? '' : '',
+                    price_70: Number(classification?.price_70) > 0 ? classification?.price_70?.toString() ?? '' : '',
+                    price_80: Number(classification?.price_80) > 0 ? classification?.price_80?.toString() ?? '' : '',
+                    price_90: Number(classification?.price_90) > 0 ? classification?.price_90?.toString() ?? '' : '',
+                    price_100: Number(classification?.price_100) > 0 ? classification?.price_100?.toString() ?? '' : '',
+                    price_110: Number(classification?.price_110) > 0 ? classification?.price_110?.toString() ?? '' : '',
+                    price_120: Number(classification?.price_120) > 0 ? classification?.price_120?.toString() ?? '' : '',
+                    price_sobrante: Number(classification?.price_sobrante) > 0 ? classification?.price_sobrante?.toString() ?? '' : '',
                 },
                 localFlower,
                 exportableOpen: false,
@@ -438,12 +438,6 @@ export default function ShowDeliveryFlow({ group, categories, existingSpecies = 
         }
     };
 
-    // Calcular subtotal de un tamaño (cantidad × precio)
-    const calculateSubtotal = (quantity: string, price: string): number => {
-        const qty = Number(quantity) || 0;
-        const prc = Number(price) || 0;
-        return qty * prc;
-    };
 
     // Calcular total de precios de una entrada
     const calculateEntryTotalPrice = (entry: EditableEntry): number => {
