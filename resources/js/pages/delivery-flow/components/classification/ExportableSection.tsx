@@ -5,8 +5,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-import type { EditableEntry, ExportableData, PricesData } from '../_types';
-import { calculateEntryTotalPrice, STEM_SIZES } from '../_utils';
+import type { EditableEntry, ExportableData, PricesData } from '../../_types';
+import { calculateEntryTotalPrice, STEM_SIZES } from '../../_utils';
 
 interface ExportableSectionProps {
     entry: EditableEntry;

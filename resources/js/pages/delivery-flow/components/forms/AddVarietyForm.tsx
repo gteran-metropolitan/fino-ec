@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-import type { ExistingSpecies, ExistingVariety } from '../_types';
+import type { ExistingSpecies, ExistingVariety } from '../../_types';
 
 interface AddVarietyFormProps {
     existingSpecies: ExistingSpecies[];

@@ -5,10 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
-import type { Category, EditableEntry, EntryTotals } from '../_types';
-
-import { ExportableSection } from './ExportableSection';
-import { LocalFlowerSection } from './LocalFlowerSection';
+import type { Category, EditableEntry, EntryTotals } from '../../_types';
+import { ExportableSection } from '../classification/ExportableSection';
+import { LocalFlowerSection } from '../classification/LocalFlowerSection';
 
 interface EntryCardProps {
     entry: EditableEntry;

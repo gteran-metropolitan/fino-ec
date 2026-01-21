@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 
-import type { Category, EditableEntry } from '../_types';
+import type { Category, EditableEntry } from '../../_types';
 
 interface LocalFlowerSectionProps {
     entry: EditableEntry;
