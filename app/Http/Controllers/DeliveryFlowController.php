@@ -1,5 +1,26 @@
 <?php
 
+/**
+ * CONTROLADOR: DeliveryFlowController
+ * 
+ * Maneja el flujo completo de Entrega y Postcosecha de flores.
+ * 
+ * Este controlador gestiona:
+ * 1. Listar entregas con sus totales calculados (index)
+ * 2. Mostrar formulario de nueva entrega (create)
+ * 3. Guardar nueva entrega con clasificación (store)
+ * 4. Mostrar entrega para editar/clasificar (show)
+ * 5. Actualizar clasificación de una entrega (update)
+ * 6. Eliminar una entrega completa (destroy)
+ * 
+ * Flujo del negocio:
+ * - Un proveedor entrega flores de varias variedades
+ * - Cada variedad se registra con su cantidad
+ * - Los tallos se clasifican como:
+ *   a) Exportables: Por tamaño (40cm-120cm) con precio
+ *   b) Flor Local: Rechazos por categorías de defectos
+ */
+
 namespace App\Http\Controllers;
 
 use App\Models\ClassificationRejection;
@@ -20,69 +41,104 @@ use Inertia\Response;
 class DeliveryFlowController extends Controller
 {
     /**
-     * Display a listing of delivery groups.
+     * Listar grupos de entrega
+     * 
+     * Este método obtiene todas las entregas con paginación y calcula
+     * totales agregados para mostrar el progreso de clasificación.
+     * 
+     * Datos que retorna para cada grupo:
+     * - total_stems: Total de tallos recibidos
+     * - total_classified: Total de tallos clasificados como exportables
+     * - total_local: Total de tallos clasificados como flor local
+     * - is_complete: ¿Se clasificó todo? (clasificados + locales == recibidos)
+     * 
+     * @return Response Vista Inertia con las entregas paginadas
      */
     public function index(): Response
     {
+        // Obtener grupos de entrega con relaciones necesarias
         $groups = ProductEntryGroup::query()
             ->with([
-                'supplier',
-                'entries.stemClassification',
+                'supplier',                      // Proveedor de la entrega
+                'entries.stemClassification',    // Clasificación de cada variedad
             ])
-            ->orderBy('entry_datetime', 'desc')
-            ->paginate(15);
+            ->orderBy('entry_datetime', 'desc')  // Más recientes primero
+            ->paginate(15);                      // 15 entregas por página
 
-        // Transformar datos
+        // Transformar cada grupo para agregar totales calculados
         $transformedGroups = $groups->through(function ($group) {
+            // Calcular total de tallos recibidos
             $totalStems = $group->entries->sum('quantity');
-            $totalClassified = 0;
-            $totalLocal = 0;
+            
+            // Inicializar contadores de clasificación
+            $totalClassified = 0;  // Tallos exportables
+            $totalLocal = 0;       // Tallos locales (rechazos)
 
+            // Iterar cada variedad (entrada) del grupo
             foreach ($group->entries as $entry) {
+                // Si tiene clasificación, sumar sus totales
                 if ($entry->stemClassification) {
                     $totalClassified += $entry->stemClassification->total_classified;
                     $totalLocal += $entry->stemClassification->local_quantity;
                 }
             }
 
+            // Retornar datos transformados
             return [
                 'id' => $group->id,
                 'supplier' => $group->supplier,
                 'entry_datetime' => $group->entry_datetime,
                 'notes' => $group->notes,
+                
+                // Simplificar entradas (solo datos necesarios para la lista)
                 'entries' => $group->entries->map(fn ($e) => [
                     'id' => $e->id,
                     'quantity' => $e->quantity,
                     'stem_classification' => $e->stemClassification,
                 ]),
+                
+                // Totales calculados
                 'total_stems' => $totalStems,
                 'total_classified' => $totalClassified,
                 'total_local' => $totalLocal,
+                
+                // ¿Está completo? Solo si se clasificaron todos los tallos
                 'is_complete' => $totalStems > 0 && ($totalClassified + $totalLocal) === $totalStems,
             ];
         });
 
+        // Retornar vista React con los datos
         return Inertia::render('delivery-flow/index', [
             'groups' => $transformedGroups,
         ]);
     }
 
     /**
-     * Show the form for creating a new delivery.
+     * Mostrar formulario de nueva entrega
+     * 
+     * Prepara los datos necesarios para el formulario de creación:
+     * - Categorías de rechazo (con sus subcategorías)
+     * - Especies existentes (para autocompletar)
+     * - Variedades existentes (para autocompletar)
+     * 
+     * @return Response Vista React con los datos del formulario
      */
     public function create(): Response
     {
+        // Obtener categorías de rechazo activas con sus subcategorías
         $categories = RejectionCategory::with('activeSubcategories')
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        // Obtener especies existentes para autocompletado
+        // Obtener especies activas para el autocompletado
+        // Solo necesitamos id y nombre para las sugerencias
         $existingSpecies = Species::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        // Obtener variedades existentes para autocompletado
+        // Obtener variedades activas para el autocompletado
+        // Incluimos species_id para filtrar por especie seleccionada
         $existingVarieties = Variety::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'species_id']);
@@ -95,18 +151,45 @@ class DeliveryFlowController extends Controller
     }
 
     /**
-     * Store a newly created delivery with all classifications.
+     * Guardar una nueva entrega con clasificación
+     * 
+     * Este método guarda una entrega completa con todas sus variedades
+     * y su clasificación en una sola transacción.
+     * 
+     * Proceso:
+     * 1. Validar todos los datos de entrada
+     * 2. Crear el grupo de entrega
+     * 3. Para cada variedad:
+     *    a) Buscar o crear la especie
+     *    b) Buscar o crear la variedad
+     *    c) Crear la entrada de producto
+     *    d) Crear la clasificación de tallos
+     *    e) Crear los rechazos (flor local)
+     * 
+     * Todo se hace en una transacción para mantener consistencia.
+     * Si algo falla, se revierte todo.
+     * 
+     * @param Request $request Datos de la entrega
+     * @return RedirectResponse Redirección a la página de entregas
      */
     public function store(Request $request): RedirectResponse
     {
+        // Validar todos los datos recibidos del formulario
         $validated = $request->validate([
+            // Datos generales de la entrega
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'delivery_date' => ['required', 'date'],
             'delivery_time' => ['required', 'date_format:H:i'],
+            
+            // Array de variedades (al menos una)
             'entries' => ['required', 'array', 'min:1'],
+            
+            // Datos básicos de cada variedad
             'entries.*.species_name' => ['required', 'string', 'max:255'],
             'entries.*.variety_name' => ['required', 'string', 'max:255'],
             'entries.*.quantity' => ['required', 'integer', 'min:1'],
+            
+            // Clasificación exportable (cantidades por tamaño)
             'entries.*.exportable' => ['nullable', 'array'],
             'entries.*.exportable.cm_40' => ['nullable', 'integer', 'min:0'],
             'entries.*.exportable.cm_50' => ['nullable', 'integer', 'min:0'],
@@ -118,6 +201,8 @@ class DeliveryFlowController extends Controller
             'entries.*.exportable.cm_110' => ['nullable', 'integer', 'min:0'],
             'entries.*.exportable.cm_120' => ['nullable', 'integer', 'min:0'],
             'entries.*.exportable.sobrante' => ['nullable', 'integer', 'min:0'],
+            
+            // Precios por tamaño
             'entries.*.prices' => ['nullable', 'array'],
             'entries.*.prices.price_40' => ['nullable', 'numeric', 'min:0'],
             'entries.*.prices.price_50' => ['nullable', 'numeric', 'min:0'],
@@ -130,6 +215,8 @@ class DeliveryFlowController extends Controller
             'entries.*.prices.price_120' => ['nullable', 'numeric', 'min:0'],
             'entries.*.prices.price_sobrante' => ['nullable', 'numeric', 'min:0'],
             'entries.*.total_price' => ['nullable', 'numeric', 'min:0'],
+            
+            // Rechazos (flor local)
             'entries.*.rejections' => ['nullable', 'array'],
             'entries.*.rejections.*.category_id' => ['required', 'exists:rejection_categories,id'],
             'entries.*.rejections.*.subcategory_id' => ['nullable', 'exists:rejection_subcategories,id'],
