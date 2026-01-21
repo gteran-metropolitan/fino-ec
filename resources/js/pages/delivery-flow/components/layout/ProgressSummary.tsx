@@ -1,4 +1,4 @@
-import type { GlobalTotals } from '../_types';
+import type { GlobalTotals } from '../../_types';
 
 interface ProgressSummaryProps {
     totals: GlobalTotals;

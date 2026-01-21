@@ -7,8 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-import type { Category } from '../_types';
-import { STEM_SIZES } from '../_utils';
+import type { Category } from '../../_types';
+import { STEM_SIZES } from '../../_utils';
 
 interface VarietyEntry {
     id: string;

@@ -2,8 +2,8 @@ import { Truck } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import type { GlobalTotals, ProductEntryGroup } from '../_types';
-import { formatDateEC } from '../_utils';
+import type { GlobalTotals, ProductEntryGroup } from '../../_types';
+import { formatDateEC } from '../../_utils';
 
 interface DeliveryHeaderProps {
     group: ProductEntryGroup;
