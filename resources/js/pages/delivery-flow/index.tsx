@@ -1,3 +1,20 @@
+/**
+ * PÁGINA DE ÍNDICE - DELIVERY FLOW
+ * 
+ * Esta página muestra la lista de entregas del día actual.
+ * 
+ * Funcionalidad principal:
+ * - Listar todas las entregas de flores del día
+ * - Mostrar el progreso de clasificación de cada entrega
+ * - Permitir acceder a la clasificación de cada entrega
+ * - Eliminar entregas completas
+ * 
+ * Conceptos clave:
+ * - Una "entrega" (ProductEntryGroup) agrupa todas las variedades que llegaron juntas
+ * - Cada entrega tiene un progreso que indica cuánto se ha clasificado
+ * - El progreso se calcula: (clasificados + locales) / total recibido
+ */
+
 import { Head, Link, router } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle2, Clock, Eye, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 
@@ -21,52 +38,81 @@ import AppLayout from '@/layouts/app-layout';
 import { formatDateEC, getTodayTitleEC, isTodayEC } from '@/lib/date-utils';
 import { type BreadcrumbItem } from '@/types';
 
+// ============================================================================
+// TIPOS DE DATOS
+// ============================================================================
+
+/**
+ * Proveedor - Información básica del proveedor de flores
+ */
 interface Supplier {
-    id: number;
-    name: string;
-    code?: string;
+    id: number;              // ID único del proveedor
+    name: string;            // Nombre del proveedor
+    code?: string;           // Código del proveedor (opcional)
 }
 
+/**
+ * Especie - Tipo de flor (Rosa, Clavel, etc.)
+ */
 interface Species {
     id: number;
     name: string;
 }
 
+/**
+ * Variedad - Variedad específica de una especie
+ */
 interface Variety {
     id: number;
     name: string;
 }
 
+/**
+ * Clasificación - Datos de clasificación de tallos
+ * Indica cuántos tallos se han clasificado y si está completo
+ */
 interface Classification {
     id: number;
-    total_classified: number;
-    is_complete: boolean;
-    local_quantity: number;
-    local_is_complete: boolean;
+    total_classified: number;        // Total de tallos clasificados como exportables
+    is_complete: boolean;            // ¿Se clasificó todo?
+    local_quantity: number;          // Tallos clasificados como flor local
+    local_is_complete: boolean;      // ¿Se clasificó toda la flor local?
 }
 
+/**
+ * Entrada de producto - Una variedad en una entrega
+ */
 interface ProductEntry {
     id: number;
     species: Species;
     variety: Variety;
-    quantity: number;
-    stem_classification: Classification | null;
+    quantity: number;                         // Cantidad recibida
+    stem_classification: Classification | null; // null si aún no se ha clasificado
 }
 
+/**
+ * Grupo de entrega - Representa una entrega completa de un proveedor
+ * Incluye totales calculados por el backend
+ */
 interface ProductEntryGroup {
     id: number;
     supplier: Supplier;
-    entry_datetime: string;
+    entry_datetime: string;              // Fecha y hora de entrega (ISO 8601)
     notes: string | null;
     entries: ProductEntry[];
-    total_stems: number;
-    total_classified: number;
-    total_local: number;
-    is_complete: boolean;
+    
+    // Totales calculados (agregados por el backend)
+    total_stems: number;                 // Total de tallos recibidos en toda la entrega
+    total_classified: number;            // Total de tallos clasificados como exportables
+    total_local: number;                 // Total de tallos clasificados como flor local
+    is_complete: boolean;                // ¿Se clasificó completamente la entrega?
 }
 
+/**
+ * Datos paginados - Laravel pagina los resultados
+ */
 interface PaginatedGroups {
-    data: ProductEntryGroup[];
+    data: ProductEntryGroup[];           // Los datos de la página actual
     current_page: number;
     last_page: number;
     per_page: number;
@@ -78,41 +124,109 @@ interface PaginatedGroups {
     }>;
 }
 
+/**
+ * Props del componente - Datos que recibe desde el backend
+ */
 interface Props {
-    groups: PaginatedGroups;
+    groups: PaginatedGroups;             // Entregas paginadas desde Laravel
 }
 
+// ============================================================================
+// CONFIGURACIÓN DE NAVEGACIÓN
+// ============================================================================
+
+/**
+ * Breadcrumbs - Migas de pan para la navegación
+ * Muestra: Panel > Entrega y Postcosecha
+ */
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Panel', href: '/dashboard' },
     { title: 'Entrega y Postcosecha', href: '/delivery-flow' },
 ];
 
+// ============================================================================
+// COMPONENTE PRINCIPAL
+// ============================================================================
+
 export default function DeliveryFlowIndex({ groups }: Props) {
-    const handleDelete = (group: ProductEntryGroup) => {
-        if (confirm(`¿Estás seguro de eliminar esta entrega de ${group.supplier.name}? Se eliminarán todos los ingresos asociados.`)) {
-            router.delete(`/delivery-flow/${group.id}`);
+    
+    // ========================================================================
+    // FUNCIONES AUXILIARES
+    // ========================================================================
+    
+    /**
+     * Manejar eliminación de una entrega
+     * 
+     * Solicita confirmación al usuario antes de eliminar.
+     * Al eliminar una entrega, se eliminan también todas sus variedades asociadas.
+     */
+    const manejarEliminacionDeEntrega = (grupoDeEntrega: ProductEntryGroup) => {
+        const mensajeConfirmacion = `¿Estás seguro de eliminar esta entrega de ${grupoDeEntrega.supplier.name}? Se eliminarán todos los ingresos asociados.`;
+        
+        if (confirm(mensajeConfirmacion)) {
+            router.delete(`/delivery-flow/${grupoDeEntrega.id}`);
         }
     };
 
-    // Filtrar solo las entregas del día actual
-    const todayGroups = groups.data.filter(group => isTodayEC(group.entry_datetime));
+    /**
+     * Obtener entregas del día actual
+     * 
+     * Filtra solo las entregas que fueron hechas hoy (en timezone de Ecuador).
+     * Esto permite que la página muestre solo el trabajo del día.
+     */
+    const entregasDeHoy = groups.data.filter(grupo => 
+        isTodayEC(grupo.entry_datetime)
+    );
 
-    const getProgress = (group: ProductEntryGroup) => {
-        if (group.total_stems === 0) return 0;
-        return Math.round(((group.total_classified + group.total_local) / group.total_stems) * 100);
+    /**
+     * Calcular porcentaje de progreso de clasificación
+     * 
+     * El progreso indica qué porcentaje de los tallos recibidos ya han sido
+     * clasificados (como exportables o flor local).
+     * 
+     * Fórmula: (clasificados + locales) / total recibido × 100
+     * 
+     * Retorna 0 si no hay tallos (para evitar división por cero).
+     * Puede retornar más de 100 si hay un error de clasificación.
+     */
+    const calcularPorcentajeDeProgreso = (grupoDeEntrega: ProductEntryGroup): number => {
+        // Si no hay tallos, el progreso es 0
+        if (grupoDeEntrega.total_stems === 0) return 0;
+        
+        // Sumar tallos clasificados (exportables + locales)
+        const tallosClasificados = grupoDeEntrega.total_classified + grupoDeEntrega.total_local;
+        
+        // Calcular porcentaje y redondear
+        const porcentaje = (tallosClasificados / grupoDeEntrega.total_stems) * 100;
+        return Math.round(porcentaje);
     };
 
-    const getStatusBadge = (group: ProductEntryGroup) => {
-        const progress = getProgress(group);
-        if (progress > 100) {
+    /**
+     * Obtener badge de estado según el progreso
+     * 
+     * Retorna un componente Badge con el color y texto apropiado
+     * según el estado de clasificación:
+     * 
+     * - Excedido (>100%): Rojo - hay un error, se clasificó más de lo recibido
+     * - Completo (100%): Verde - toda la entrega está clasificada
+     * - En Proceso (1-99%): Amarillo - se está trabajando en la clasificación
+     * - Pendiente (0%): Gris - aún no se ha empezado a clasificar
+     */
+    const obtenerBadgeDeEstado = (grupoDeEntrega: ProductEntryGroup) => {
+        const progreso = calcularPorcentajeDeProgreso(grupoDeEntrega);
+        
+        // Caso 1: Clasificación excedida (ERROR)
+        if (progreso > 100) {
             return (
                 <Badge className="bg-red-100 text-red-700 border-red-200">
                     <AlertTriangle className="mr-1 h-3 w-3" />
-                    Excedido ({progress}%)
+                    Excedido ({progreso}%)
                 </Badge>
             );
         }
-        if (progress === 100) {
+        
+        // Caso 2: Clasificación completa (ÉXITO)
+        if (progreso === 100) {
             return (
                 <Badge className="bg-green-100 text-green-700 border-green-200">
                     <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -120,14 +234,18 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                 </Badge>
             );
         }
-        if (progress > 0) {
+        
+        // Caso 3: Clasificación en proceso
+        if (progreso > 0) {
             return (
                 <Badge className="bg-amber-100 text-amber-700 border-amber-200">
                     <Clock className="mr-1 h-3 w-3" />
-                    En Proceso ({progress}%)
+                    En Proceso ({progreso}%)
                 </Badge>
             );
         }
+        
+        // Caso 4: Sin clasificar (pendiente)
         return (
             <Badge variant="outline" className="text-muted-foreground">
                 <Clock className="mr-1 h-3 w-3" />
@@ -136,10 +254,15 @@ export default function DeliveryFlowIndex({ groups }: Props) {
         );
     };
 
+    // ========================================================================
+    // RENDERIZADO
+    // ========================================================================
+    
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Entrega y Postcosecha" />
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
+                {/* Encabezado de la página */}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight">
@@ -157,6 +280,7 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                     </Button>
                 </div>
 
+                {/* Tabla de entregas del día */}
                 <div className="rounded-md border">
                     <Table>
                         <TableHeader>
@@ -179,7 +303,7 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {todayGroups.length === 0 ? (
+                            {entregasDeHoy.length === 0 ? (
                                 <TableRow>
                                     <TableCell
                                         colSpan={7}
@@ -204,81 +328,94 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                todayGroups.map((group) => (
+                                entregasDeHoy.map((grupo) => (
                                     <TableRow
-                                        key={group.id}
+                                        key={grupo.id}
                                         className="cursor-pointer hover:bg-muted/50"
                                         onClick={() =>
                                             router.visit(
-                                                `/delivery-flow/${group.id}`,
+                                                `/delivery-flow/${grupo.id}`,
                                             )
                                         }
                                     >
+                                        {/* Fecha de entrega */}
                                         <TableCell className="font-medium">
                                             <div>
                                                 <p className="text-base">
-                                                    {formatDateEC(group.entry_datetime).short}
+                                                    {formatDateEC(grupo.entry_datetime).short}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground capitalize">
-                                                    {formatDateEC(group.entry_datetime).long}
+                                                    {formatDateEC(grupo.entry_datetime).long}
                                                 </p>
                                             </div>
                                         </TableCell>
+                                        
+                                        {/* Proveedor */}
                                         <TableCell>
                                             <div>
                                                 <p className="font-medium">
                                                     Código del proveedor:{' '}
-                                                    {group.supplier.code}
+                                                    {grupo.supplier.code}
                                                 </p>
-                                                {group.supplier.code && (
+                                                {grupo.supplier.code && (
                                                     <p className="text-xs text-muted-foreground">
                                                         {' '}
-                                                        {group.supplier.name}
+                                                        {grupo.supplier.name}
                                                     </p>
                                                 )}
                                             </div>
                                         </TableCell>
+                                        
+                                        {/* Número de variedades */}
                                         <TableCell className="text-center">
                                             <Badge variant="secondary">
-                                                {group.entries.length}
+                                                {grupo.entries.length}
                                             </Badge>
                                         </TableCell>
+                                        
+                                        {/* Total de tallos */}
                                         <TableCell className="text-right font-medium">
-                                            {group.total_stems.toLocaleString()}
+                                            {grupo.total_stems.toLocaleString()}
                                         </TableCell>
+                                        
+                                        {/* Barra de progreso */}
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <div className="h-2 w-20 overflow-hidden rounded-full bg-secondary">
                                                     <div
                                                         className={`h-full transition-all ${
-                                                            getProgress(group) >
+                                                            calcularPorcentajeDeProgreso(grupo) >
                                                             100
                                                                 ? 'bg-red-500'
-                                                                : getProgress(
-                                                                        group,
+                                                                : calcularPorcentajeDeProgreso(
+                                                                        grupo,
                                                                     ) === 100
                                                                   ? 'bg-green-500'
                                                                   : 'bg-primary'
                                                         }`}
                                                         style={{
-                                                            width: `${Math.min(getProgress(group), 100)}%`,
+                                                            width: `${Math.min(calcularPorcentajeDeProgreso(grupo), 100)}%`,
                                                         }}
                                                     />
                                                 </div>
                                                 <span
                                                     className={`w-12 text-xs ${
-                                                        getProgress(group) > 100
+                                                        calcularPorcentajeDeProgreso(grupo) > 100
                                                             ? 'font-medium text-red-600'
                                                             : 'text-muted-foreground'
                                                     }`}
                                                 >
-                                                    {getProgress(group)}%
+                                                    {calcularPorcentajeDeProgreso(grupo)}%
                                                 </span>
                                             </div>
                                         </TableCell>
+                                        
+                                        {/* Badge de estado */}
                                         <TableCell className="text-center">
-                                            {getStatusBadge(group)}
+                                            {obtenerBadgeDeEstado(grupo)}
                                         </TableCell>
+                                        
+                                        {/* Menú de acciones */}
                                         <TableCell
                                             onClick={(e) => e.stopPropagation()}
                                         >
@@ -294,7 +431,7 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem asChild>
                                                         <Link
-                                                            href={`/delivery-flow/${group.id}`}
+                                                            href={`/delivery-flow/${grupo.id}`}
                                                         >
                                                             <Eye className="mr-2 h-4 w-4" />
                                                             Editar entrega /
@@ -303,7 +440,7 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         onClick={() =>
-                                                            handleDelete(group)
+                                                            manejarEliminacionDeEntrega(grupo)
                                                         }
                                                         className="text-destructive"
                                                     >
@@ -321,16 +458,16 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                 </div>
 
                 {/* Resumen del día */}
-                {todayGroups.length > 0 && (
+                {entregasDeHoy.length > 0 && (
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <p>
-                            {todayGroups.length} entrega
-                            {todayGroups.length !== 1 ? 's' : ''} hoy
+                            {entregasDeHoy.length} entrega
+                            {entregasDeHoy.length !== 1 ? 's' : ''} hoy
                         </p>
                         <p>
                             Total:{' '}
-                            {todayGroups
-                                .reduce((sum, g) => sum + g.total_stems, 0)
+                            {entregasDeHoy
+                                .reduce((suma, g) => suma + g.total_stems, 0)
                                 .toLocaleString()}{' '}
                             tallos
                         </p>
