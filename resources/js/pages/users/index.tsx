@@ -53,6 +53,7 @@ const roleLabels: Record<string, string> = {
     super_admin: 'Super Admin',
     admin: 'Administrador',
     user: 'Usuario',
+    dataEntryUser: 'Digitador'
 };
 
 const roleBadgeVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {

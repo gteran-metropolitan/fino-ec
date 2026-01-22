@@ -46,6 +46,8 @@ class HandleInertiaRequests extends Middleware
             'can' => [
                 'manage_users' => $user?->canManageUsers() ?? false,
             ],
+            // Rol del usuario para controlar vistas restringidas
+            'isDataEntryUser' => $user?->isDataEntryUser() ?? false,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

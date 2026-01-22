@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { Check, ChevronDown, ChevronUp, Flower2, Ruler, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -6,17 +7,19 @@ import { Card } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { SharedData } from '@/types';
 
-import type { Category } from '../../_types';
+import type { Category, ExportableData, PricesData } from '../../_types';
 import { STEM_SIZES } from '../../_utils';
 
+// Tipo para la entrada de variedad en el formulario de creación
 interface VarietyEntry {
     id: string;
     species_name: string;
     variety_name: string;
     quantity: string;
-    exportable: Record<string, string>;
-    prices: Record<string, string>;
+    exportable: ExportableData;
+    prices: PricesData;
     localFlower: Record<string, string>;
     exportableOpen: boolean;
     localFlowerOpen: boolean;
@@ -58,6 +61,9 @@ export function CreateEntryCard({
     onToggleExportable,
     onToggleLocalFlower,
 }: CreateEntryCardProps) {
+    // Si es digitador, tiene vista restringida
+    const { isDataEntryUser } = usePage<SharedData>().props;
+
     return (
         <Card className="overflow-hidden">
             {/* Header */}
@@ -96,8 +102,8 @@ export function CreateEntryCard({
                 </div>
             </div>
 
-            {/* Resumen */}
-            {entry.quantity && Number(entry.quantity) > 0 && (
+            {/* Resumen - ocultar para digitadores */}
+            {!isDataEntryUser && entry.quantity && Number(entry.quantity) > 0 && (
                 <div className="flex gap-4 border-b bg-muted/20 px-4 py-2 text-sm">
                     <span>
                         Exp: <strong className="text-green-600">{totals.totalExportable}</strong>
@@ -127,7 +133,8 @@ export function CreateEntryCard({
                         <div className="flex items-center gap-2">
                             <Ruler className="h-4 w-4 text-green-600" />
                             <span className="text-sm font-medium">Exportable</span>
-                            {totals.totalExportable > 0 && (
+                            {/* Ocultar badge de total para digitadores */}
+                            {!isDataEntryUser && totals.totalExportable > 0 && (
                                 <Badge className="bg-green-100 text-xs text-green-700">{totals.totalExportable}</Badge>
                             )}
                         </div>
@@ -138,21 +145,42 @@ export function CreateEntryCard({
                     <div className="space-y-4 border-b p-4">
                         <div className="grid gap-2 sm:grid-cols-5 lg:grid-cols-10">
                             {STEM_SIZES.map(({ key, priceKey, label, unit }) => {
-                                const qty = Number(entry.exportable[key]) || 0;
-                                const price = Number(entry.prices[priceKey]) || 0;
+                                // Usamos "as keyof" para decirle a TypeScript que key/priceKey son claves válidas
+                                const exportableKey = key as keyof ExportableData;
+                                const pricesKey = priceKey as keyof PricesData;
+
+                                const qty = Number(entry.exportable[exportableKey]) || 0;
+                                const price = Number(entry.prices[pricesKey]) || 0;
                                 const subtotal = qty * price;
 
                                 return (
-                                    <div key={key} className="space-y-1 rounded-lg border bg-muted/30 p-2">
+                                    <div
+                                        key={key}
+                                        className="space-y-1 rounded-lg border bg-muted/30 p-2"
+                                    >
                                         <Label className="block text-center text-xs font-semibold">
                                             {label}
-                                            {unit && <span className="text-muted-foreground"> {unit}</span>}
+                                            {unit && (
+                                                <span className="text-muted-foreground">
+                                                    {' '}
+                                                    {unit}
+                                                </span>
+                                            )}
                                         </Label>
                                         <Input
                                             type="text"
                                             inputMode="numeric"
-                                            value={entry.exportable[key] || ''}
-                                            onChange={(e) => onExportableChange(key, e.target.value)}
+                                            value={
+                                                entry.exportable[
+                                                    exportableKey
+                                                ] || ''
+                                            }
+                                            onChange={(e) =>
+                                                onExportableChange(
+                                                    key,
+                                                    e.target.value,
+                                                )
+                                            }
                                             className="h-8 text-center text-sm"
                                             placeholder="0"
                                         />
@@ -163,13 +191,21 @@ export function CreateEntryCard({
                                             <Input
                                                 type="text"
                                                 inputMode="decimal"
-                                                value={entry.prices[priceKey] || ''}
-                                                onChange={(e) => onPriceChange(priceKey, e.target.value)}
+                                                value={
+                                                    entry.prices[pricesKey] ||
+                                                    ''
+                                                }
+                                                onChange={(e) =>
+                                                    onPriceChange(
+                                                        priceKey,
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 className="h-7 text-center text-xs"
                                                 placeholder="0.00"
                                             />
                                         </div>
-                                        {subtotal > 0 && (
+                                        {!isDataEntryUser && subtotal > 0 && (
                                             <div className="border-t pt-1 text-center">
                                                 <span className="text-[10px] font-medium text-green-600">
                                                     ${subtotal.toFixed(2)}
@@ -181,7 +217,8 @@ export function CreateEntryCard({
                             })}
                         </div>
 
-                        {totalPrice > 0 && (
+                        {/* Ocultar total precio para digitadores */}
+                        {!isDataEntryUser && totalPrice > 0 && (
                             <div className="flex justify-end border-t pt-3">
                                 <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-right">
                                     <span className="block text-xs text-green-600">Total Exportable</span>
@@ -200,7 +237,8 @@ export function CreateEntryCard({
                         <div className="flex items-center gap-2">
                             <Flower2 className="h-4 w-4 text-amber-600" />
                             <span className="text-sm font-medium">Flor Local</span>
-                            {totals.totalLocal > 0 && (
+                            {/* Ocultar badge de total para digitadores */}
+                            {!isDataEntryUser && totals.totalLocal > 0 && (
                                 <Badge className="bg-amber-100 text-xs text-amber-700">{totals.totalLocal}</Badge>
                             )}
                         </div>

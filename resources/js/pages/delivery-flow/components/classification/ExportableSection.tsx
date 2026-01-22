@@ -1,9 +1,11 @@
+import { usePage } from '@inertiajs/react';
 import { ChevronDown, ChevronUp, Ruler } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { SharedData } from '@/types';
 
 import type { EditableEntry, ExportableData, PricesData } from '../../_types';
 import { calculateEntryTotalPrice, STEM_SIZES } from '../../_utils';
@@ -25,6 +27,9 @@ export function ExportableSection({
     onExportableChange,
     onPriceChange,
 }: ExportableSectionProps) {
+    // Si es digitador, tiene vista restringida (no ve totales ni subtotales)
+    const { isDataEntryUser } = usePage<SharedData>().props;
+
     const totalPrice = calculateEntryTotalPrice(entry);
 
     return (
@@ -34,7 +39,8 @@ export function ExportableSection({
                     <div className="flex items-center gap-2">
                         <Ruler className="h-4 w-4 text-green-600" />
                         <span className="text-sm font-medium">Exportable</span>
-                        {totalExportable > 0 && (
+                        {/* Ocultar badge de total para digitadores */}
+                        {!isDataEntryUser && totalExportable > 0 && (
                             <Badge className="bg-green-100 text-xs text-green-700">{totalExportable}</Badge>
                         )}
                     </div>
@@ -77,7 +83,10 @@ export function ExportableSection({
                                             placeholder="0.00"
                                         />
                                     </div>
-                                    {subtotal > 0 && (
+
+
+                                    {/* Ocultar subtotal para digitadores */}
+                                    {!isDataEntryUser && subtotal > 0 && (
                                         <div className="border-t pt-1 text-center">
                                             <span className="text-[10px] font-medium text-green-600">
                                                 ${subtotal.toFixed(2)}
@@ -89,8 +98,8 @@ export function ExportableSection({
                         })}
                     </div>
 
-                    {/* Total de la variedad */}
-                    {totalPrice > 0 && (
+                    {/* Ocultar total para digitadores */}
+                    {!isDataEntryUser && totalPrice > 0 && (
                         <div className="flex justify-end border-t pt-3">
                             <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-right">
                                 <span className="block text-xs text-green-600">Total Exportable</span>

@@ -1,3 +1,7 @@
+import { usePage } from '@inertiajs/react';
+
+import type { SharedData } from '@/types';
+
 import type { GlobalTotals } from '../../_types';
 
 interface ProgressSummaryProps {
@@ -5,6 +9,13 @@ interface ProgressSummaryProps {
 }
 
 export function ProgressSummary({ totals }: ProgressSummaryProps) {
+    // Si es digitador, no mostrar este componente
+    const { isDataEntryUser } = usePage<SharedData>().props;
+
+    if (isDataEntryUser) {
+        return null;
+    }
+
     return (
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {/* Exportable */}

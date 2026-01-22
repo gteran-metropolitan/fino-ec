@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle2, Clock, Eye, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { formatDateEC, getTodayTitleEC, isTodayEC } from '@/lib/date-utils';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 
 interface Supplier {
     id: number;
@@ -88,6 +88,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function DeliveryFlowIndex({ groups }: Props) {
+    // Si es digitador, tiene vista restringida
+    const { isDataEntryUser } = usePage<SharedData>().props;
+
     const handleDelete = (group: ProductEntryGroup) => {
         if (confirm(`¿Estás seguro de eliminar esta entrega de ${group.supplier.name}? Se eliminarán todos los ingresos asociados.`)) {
             router.delete(`/delivery-flow/${group.id}`);
@@ -166,15 +169,20 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                                 <TableHead className="text-center">
                                     Variedades
                                 </TableHead>
-                                <TableHead className="text-right">
-                                    Total Tallos
-                                </TableHead>
-                                <TableHead className="text-center">
-                                    Progreso
-                                </TableHead>
-                                <TableHead className="text-center">
-                                    Estado
-                                </TableHead>
+                                {/* Ocultar columnas de totales para digitadores */}
+                                {!isDataEntryUser && (
+                                    <>
+                                        <TableHead className="text-right">
+                                            Total Tallos
+                                        </TableHead>
+                                        <TableHead className="text-center">
+                                            Progreso
+                                        </TableHead>
+                                        <TableHead className="text-center">
+                                            Estado
+                                        </TableHead>
+                                    </>
+                                )}
                                 <TableHead className="w-16">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -182,7 +190,7 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                             {todayGroups.length === 0 ? (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={7}
+                                        colSpan={isDataEntryUser ? 4 : 7}
                                         className="py-12 text-center text-muted-foreground"
                                     >
                                         <div className="flex flex-col items-center gap-2">
@@ -243,42 +251,47 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                                                 {group.entries.length}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right font-medium">
-                                            {group.total_stems.toLocaleString()}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-2 w-20 overflow-hidden rounded-full bg-secondary">
-                                                    <div
-                                                        className={`h-full transition-all ${
-                                                            getProgress(group) >
-                                                            100
-                                                                ? 'bg-red-500'
-                                                                : getProgress(
-                                                                        group,
-                                                                    ) === 100
-                                                                  ? 'bg-green-500'
-                                                                  : 'bg-primary'
-                                                        }`}
-                                                        style={{
-                                                            width: `${Math.min(getProgress(group), 100)}%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                                <span
-                                                    className={`w-12 text-xs ${
-                                                        getProgress(group) > 100
-                                                            ? 'font-medium text-red-600'
-                                                            : 'text-muted-foreground'
-                                                    }`}
-                                                >
-                                                    {getProgress(group)}%
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {getStatusBadge(group)}
-                                        </TableCell>
+                                        {/* Ocultar celdas de totales para digitadores */}
+                                        {!isDataEntryUser && (
+                                            <>
+                                                <TableCell className="text-right font-medium">
+                                                    {group.total_stems.toLocaleString()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-2 w-20 overflow-hidden rounded-full bg-secondary">
+                                                            <div
+                                                                className={`h-full transition-all ${
+                                                                    getProgress(group) >
+                                                                    100
+                                                                        ? 'bg-red-500'
+                                                                        : getProgress(
+                                                                                group,
+                                                                            ) === 100
+                                                                          ? 'bg-green-500'
+                                                                          : 'bg-primary'
+                                                                }`}
+                                                                style={{
+                                                                    width: `${Math.min(getProgress(group), 100)}%`,
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <span
+                                                            className={`w-12 text-xs ${
+                                                                getProgress(group) > 100
+                                                                    ? 'font-medium text-red-600'
+                                                                    : 'text-muted-foreground'
+                                                            }`}
+                                                        >
+                                                            {getProgress(group)}%
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {getStatusBadge(group)}
+                                                </TableCell>
+                                            </>
+                                        )}
                                         <TableCell
                                             onClick={(e) => e.stopPropagation()}
                                         >
@@ -320,8 +333,8 @@ export default function DeliveryFlowIndex({ groups }: Props) {
                     </Table>
                 </div>
 
-                {/* Resumen del día */}
-                {todayGroups.length > 0 && (
+                {/* Resumen del día - ocultar para digitadores */}
+                {!isDataEntryUser && todayGroups.length > 0 && (
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <p>
                             {todayGroups.length} entrega

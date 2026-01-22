@@ -6,12 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import type { ExistingSpecies, ExistingVariety } from '../../_types';
-
-interface SupplierVariety {
-    id: number;
-    species_name: string;
-    variety_name: string;
-}
+import type { SupplierVariety } from '../../_useCreateDelivery';
 
 interface Supplier {
     id: number;

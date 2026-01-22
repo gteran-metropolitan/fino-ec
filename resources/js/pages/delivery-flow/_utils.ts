@@ -235,13 +235,13 @@ export const getEntryTotals = (
 /**
  * Calcula el precio total de una entrada
  *
- * @param entry - La entrada editable
+ * @param entry - La entrada con datos de exportable y precios
  * @returns El precio total (suma de cantidad × precio para cada tamaño)
  *
  * 💡 Fórmula: Σ (cantidad_tamaño × precio_tamaño)
  *    Ej: (50 tallos × $0.25) + (100 tallos × $0.30) = $42.50
  */
-export const calculateEntryTotalPrice = (entry: EditableEntry): number => {
+export const calculateEntryTotalPrice = (entry: { exportable: ExportableData; prices: PricesData }): number => {
     let total = 0;
 
     // Recorremos cada tamaño de tallo

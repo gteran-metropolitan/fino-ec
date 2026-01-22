@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,7 +11,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**
@@ -76,5 +77,22 @@ class User extends Authenticatable
     public function canManageUsers(): bool
     {
         return $this->isSuperAdmin();
+    }
+
+    /**
+     * Check if the user is a data entry user (digitador).
+     */
+    public function isDataEntryUser(): bool
+    {
+        return $this->role === 'dataEntryUser';
+    }
+
+    /**
+     * Check if the user can view totals and summaries.
+     * Digitadores no pueden ver totales para evitar que "cuadren" números.
+     */
+    public function canViewTotals(): bool
+    {
+        return ! $this->isDataEntryUser();
     }
 }

@@ -1,13 +1,16 @@
+import { usePage } from '@inertiajs/react';
 import { Check, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ExportableSection } from '@/pages/delivery-flow/components';
+import { LocalFlowerSection } from '@/pages/delivery-flow/components';
+import type { SharedData } from '@/types';
 
 import type { Category, EditableEntry, EntryTotals } from '../../_types';
-import { ExportableSection } from '../classification/ExportableSection';
-import { LocalFlowerSection } from '../classification/LocalFlowerSection';
+
 
 interface EntryCardProps {
     entry: EditableEntry;
@@ -40,6 +43,9 @@ export function EntryCard({
     onToggleExportable,
     onToggleLocalFlower,
 }: EntryCardProps) {
+    // Si es digitador, tiene vista restringida
+    const { isDataEntryUser } = usePage<SharedData>().props;
+
     return (
         <Card className={`overflow-hidden ${entry.isNew ? 'border-2 border-dashed border-primary/50' : ''}`}>
             {/* Header */}
@@ -56,24 +62,29 @@ export function EntryCard({
                         </div>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
-                        <span>
-                            Exp: <strong className="text-green-600">{totals.totalExportable}</strong>
-                        </span>
-                        <span>
-                            Local: <strong className="text-amber-600">{totals.totalLocal}</strong>
-                        </span>
-                        <span
-                            className={
-                                totals.remaining === 0
-                                    ? 'text-green-600'
-                                    : totals.remaining < 0
-                                      ? 'text-destructive'
-                                      : 'text-amber-600'
-                            }
-                        >
-                            Rest: <strong>{totals.remaining}</strong>
-                            {totals.remaining === 0 && <Check className="ml-1 inline h-4 w-4" />}
-                        </span>
+                        {/* Ocultar totales para digitadores */}
+                        {!isDataEntryUser && (
+                            <>
+                                <span>
+                                    Exp: <strong className="text-green-600">{totals.totalExportable}</strong>
+                                </span>
+                                <span>
+                                    Local: <strong className="text-amber-600">{totals.totalLocal}</strong>
+                                </span>
+                                <span
+                                    className={
+                                        totals.remaining === 0
+                                            ? 'text-green-600'
+                                            : totals.remaining < 0
+                                              ? 'text-destructive'
+                                              : 'text-amber-600'
+                                    }
+                                >
+                                    Rest: <strong>{totals.remaining}</strong>
+                                    {totals.remaining === 0 && <Check className="ml-1 inline h-4 w-4" />}
+                                </span>
+                            </>
+                        )}
                         {entry.isNew && (
                             <Button
                                 type="button"
@@ -88,13 +99,15 @@ export function EntryCard({
                     </div>
                 </div>
 
-                {/* Sección de cantidad de tallos */}
-                <QuantitySection
-                    entry={entry}
-                    onQuantityChange={onQuantityChange}
-                    onAddQuantityChange={onAddQuantityChange}
-                    onRemoveQuantityChange={onRemoveQuantityChange}
-                />
+                {/* Sección de cantidad de tallos - ocultar para digitadores */}
+                {!isDataEntryUser && (
+                    <QuantitySection
+                        entry={entry}
+                        onQuantityChange={onQuantityChange}
+                        onAddQuantityChange={onAddQuantityChange}
+                        onRemoveQuantityChange={onRemoveQuantityChange}
+                    />
+                )}
             </div>
 
             {/* Exportable */}
