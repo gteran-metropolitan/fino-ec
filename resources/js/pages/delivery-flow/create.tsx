@@ -31,8 +31,16 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Nueva Entrega', href: '/delivery-flow/create' },
 ];
 
-export default function CreateDeliveryFlow({ categories, existingSpecies = [], existingVarieties = [] }: Props) {
-    const delivery = useCreateDelivery({ categories, existingSpecies, existingVarieties });
+export default function CreateDeliveryFlow({
+    categories,
+    existingSpecies = [],
+    existingVarieties = [],
+}: Props) {
+    const delivery = useCreateDelivery({
+        categories,
+        existingSpecies,
+        existingVarieties,
+    });
 
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -45,9 +53,12 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
                 {/* Header */}
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Nueva Entrega y Postcosecha</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                        Nueva Entrega y Postcosecha
+                    </h1>
                     <p className="text-sm text-muted-foreground">
-                        Registra la entrega completa: variedades, clasificación exportable y flor local
+                        Registra la entrega completa: variedades, clasificación
+                        exportable y flor local
                     </p>
                 </div>
 
@@ -55,7 +66,9 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
                 {delivery.successMessage && (
                     <Alert className="border-green-500 bg-green-50">
                         <Check className="h-4 w-4 text-green-600" />
-                        <AlertDescription className="text-green-700">{delivery.successMessage}</AlertDescription>
+                        <AlertDescription className="text-green-700">
+                            {delivery.successMessage}
+                        </AlertDescription>
                     </Alert>
                 )}
 
@@ -68,88 +81,159 @@ export default function CreateDeliveryFlow({ categories, existingSpecies = [], e
                             onSearch={delivery.searchSupplier}
                             searching={delivery.searchingSupplier}
                             searchMessage={delivery.searchMessage}
-                            onShowCreateSupplier={() => delivery.setShowCreateSupplier(true)}
+                            onShowCreateSupplier={() =>
+                                delivery.setShowCreateSupplier(true)
+                            }
                         />
                     )}
 
                     {/* Step 2: Entry Data */}
-                    {delivery.currentStep === 'entry' && delivery.selectedSupplier && (
-                        <>
-                            <VarietySelector
-                                supplier={delivery.selectedSupplier}
-                                deliveryDate={delivery.deliveryDate}
-                                deliveryTime={delivery.deliveryTime}
-                                onDateChange={delivery.setDeliveryDate}
-                                onTimeChange={delivery.setDeliveryTime}
-                                onBack={delivery.backToSupplier}
-                                groupedVarieties={delivery.groupedAvailableVarieties}
-                                onSelectVariety={delivery.addVariety}
-                                newSpeciesName={delivery.newSpeciesName}
-                                newVarietyName={delivery.newVarietyName}
-                                onSpeciesChange={delivery.handleSpeciesChange}
-                                onVarietyChange={delivery.handleVarietyChange}
-                                showSpeciesSuggestions={delivery.showSpeciesSuggestions}
-                                showVarietySuggestions={delivery.showVarietySuggestions}
-                                setShowSpeciesSuggestions={delivery.setShowSpeciesSuggestions}
-                                setShowVarietySuggestions={delivery.setShowVarietySuggestions}
-                                filteredSpecies={delivery.filteredSpecies}
-                                filteredVarieties={delivery.filteredVarieties}
-                                onSelectSpecies={delivery.selectSpecies}
-                                onSelectVariety2={delivery.selectVariety}
-                                onAddManualVariety={delivery.addManualVariety}
-                            />
-
-                            {/* Progress Summary */}
-                            {delivery.entries.length > 0 && <ProgressSummary totals={delivery.globalTotals} />}
-
-                            {/* Entry Cards */}
-                            {delivery.entries.map((entry, index) => (
-                                <CreateEntryCard
-                                    key={entry.id}
-                                    entry={entry}
-                                    index={index}
-                                    totals={delivery.getEntryTotals(entry)}
-                                    categories={categories}
-                                    totalPrice={calculateEntryTotalPrice(entry as any)}
-                                    onRemove={() => delivery.removeEntry(entry.id)}
-                                    onQuantityChange={(value) => delivery.updateQuantity(entry.id, value)}
-                                    onExportableChange={(key, value) => delivery.updateExportable(entry.id, key, value)}
-                                    onPriceChange={(key, value) => delivery.updatePrice(entry.id, key, value)}
-                                    onLocalFlowerChange={(key, value) => delivery.updateLocalFlower(entry.id, key, value)}
-                                    onToggleExportable={() => delivery.toggleExportable(entry.id)}
-                                    onToggleLocalFlower={() => delivery.toggleLocalFlower(entry.id)}
+                    {delivery.currentStep === 'entry' &&
+                        delivery.selectedSupplier && (
+                            <>
+                                <VarietySelector
+                                    supplier={delivery.selectedSupplier}
+                                    deliveryDate={delivery.deliveryDate}
+                                    deliveryTime={delivery.deliveryTime}
+                                    onDateChange={delivery.setDeliveryDate}
+                                    onTimeChange={delivery.setDeliveryTime}
+                                    onBack={delivery.backToSupplier}
+                                    groupedVarieties={
+                                        delivery.groupedAvailableVarieties
+                                    }
+                                    onSelectVariety={delivery.addVariety}
+                                    newSpeciesName={delivery.newSpeciesName}
+                                    newVarietyName={delivery.newVarietyName}
+                                    onSpeciesChange={
+                                        delivery.handleSpeciesChange
+                                    }
+                                    onVarietyChange={
+                                        delivery.handleVarietyChange
+                                    }
+                                    showSpeciesSuggestions={
+                                        delivery.showSpeciesSuggestions
+                                    }
+                                    showVarietySuggestions={
+                                        delivery.showVarietySuggestions
+                                    }
+                                    setShowSpeciesSuggestions={
+                                        delivery.setShowSpeciesSuggestions
+                                    }
+                                    setShowVarietySuggestions={
+                                        delivery.setShowVarietySuggestions
+                                    }
+                                    filteredSpecies={delivery.filteredSpecies}
+                                    filteredVarieties={
+                                        delivery.filteredVarieties
+                                    }
+                                    onSelectSpecies={delivery.selectSpecies}
+                                    onSelectVariety2={delivery.selectVariety}
+                                    onAddManualVariety={
+                                        delivery.addManualVariety
+                                    }
                                 />
-                            ))}
 
-                            {/* Empty State */}
-                            {delivery.entries.length === 0 && (
-                                <div className="rounded-lg border border-dashed py-8 text-center text-muted-foreground">
-                                    <p>No has seleccionado ninguna variedad</p>
-                                    <p className="text-sm">Selecciona de las variedades registradas o agrega manualmente</p>
+                                {/* Progress Summary */}
+                                {delivery.entries.length > 0 && (
+                                    <ProgressSummary
+                                        totals={delivery.globalTotals}
+                                    />
+                                )}
+
+                                {/* Entry Cards */}
+                                {delivery.entries.map((entry, index) => (
+                                    <CreateEntryCard
+                                        key={entry.id}
+                                        entry={entry}
+                                        index={index}
+                                        totals={delivery.getEntryTotals(entry)}
+                                        categories={categories}
+                                        totalPrice={calculateEntryTotalPrice(
+                                            entry,
+                                        )}
+                                        onRemove={() =>
+                                            delivery.removeEntry(entry.id)
+                                        }
+                                        onQuantityChange={(value) =>
+                                            delivery.updateQuantity(
+                                                entry.id,
+                                                value,
+                                            )
+                                        }
+                                        onExportableChange={(key, value) =>
+                                            delivery.updateExportable(
+                                                entry.id,
+                                                key,
+                                                value,
+                                            )
+                                        }
+                                        onPriceChange={(key, value) =>
+                                            delivery.updatePrice(
+                                                entry.id,
+                                                key,
+                                                value,
+                                            )
+                                        }
+                                        onLocalFlowerChange={(key, value) =>
+                                            delivery.updateLocalFlower(
+                                                entry.id,
+                                                key,
+                                                value,
+                                            )
+                                        }
+                                        onToggleExportable={() =>
+                                            delivery.toggleExportable(entry.id)
+                                        }
+                                        onToggleLocalFlower={() =>
+                                            delivery.toggleLocalFlower(entry.id)
+                                        }
+                                    />
+                                ))}
+
+                                {/* Empty State */}
+                                {delivery.entries.length === 0 && (
+                                    <div className="rounded-lg border border-dashed py-8 text-center text-muted-foreground">
+                                        <p>
+                                            No has seleccionado ninguna variedad
+                                        </p>
+                                        <p className="text-sm">
+                                            Selecciona de las variedades
+                                            registradas o agrega manualmente
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="flex justify-end gap-4 border-t pt-4">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        asChild
+                                    >
+                                        <Link href="/delivery-flow">
+                                            <X className="mr-2 h-4 w-4" />
+                                            Cancelar
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={
+                                            delivery.processing ||
+                                            !delivery.canSave
+                                        }
+                                    >
+                                        {delivery.processing ? (
+                                            'Guardando...'
+                                        ) : (
+                                            <>
+                                                <Save className="mr-2 h-4 w-4" />
+                                                Guardar Entrega
+                                            </>
+                                        )}
+                                    </Button>
                                 </div>
-                            )}
-
-                            {/* Action Buttons */}
-                            <div className="flex justify-end gap-4 border-t pt-4">
-                                <Button type="button" variant="outline" asChild>
-                                    <Link href="/delivery-flow">
-                                        <X className="mr-2 h-4 w-4" />
-                                        Cancelar
-                                    </Link>
-                                </Button>
-                                <Button type="submit" disabled={delivery.processing || !delivery.canSave}>
-                                    {delivery.processing ? (
-                                        'Guardando...'
-                                    ) : (
-                                        <>
-                                            <Save className="mr-2 h-4 w-4" />
-                                            Guardar Entrega
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        </>
-                    )}
+                            </>
+                        )}
                 </form>
 
                 {/* Create Supplier Dialog */}

@@ -30,6 +30,7 @@ export interface SharedData {
     name: string;
     auth: Auth;
     can: Permissions;
+    isDataEntryUser: boolean;
     sidebarOpen: boolean;
     [key: string]: unknown;
 }
@@ -41,7 +42,7 @@ export interface User {
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
-    role: 'super_admin' | 'admin' | 'user';
+    role: 'super_admin' | 'admin' | 'dataEntryUser';
     is_active: boolean;
     created_at: string;
     updated_at: string;

@@ -11,11 +11,11 @@ class EnsureSuperAdmin
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param Closure(Request): (Response) $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+        if (! $request->user() || ! $request->user()->isSuperAdmin()) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Acceso no autorizado.'], 403);
             }
@@ -26,4 +26,3 @@ class EnsureSuperAdmin
         return $next($request);
     }
 }
-

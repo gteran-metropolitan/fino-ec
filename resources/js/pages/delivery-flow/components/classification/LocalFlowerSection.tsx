@@ -1,8 +1,10 @@
+import { usePage } from '@inertiajs/react';
 import { ChevronDown, ChevronUp, Flower2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import type { SharedData } from '@/types';
 
 import type { Category, EditableEntry } from '../../_types';
 
@@ -23,6 +25,9 @@ export function LocalFlowerSection({
     onToggle,
     onLocalFlowerChange,
 }: LocalFlowerSectionProps) {
+    // Si es digitador, tiene vista restringida
+    const { isDataEntryUser } = usePage<SharedData>().props;
+
     return (
         <Collapsible open={isOpen} onOpenChange={onToggle}>
             <CollapsibleTrigger asChild>
@@ -30,7 +35,8 @@ export function LocalFlowerSection({
                     <div className="flex items-center gap-2">
                         <Flower2 className="h-4 w-4 text-amber-600" />
                         <span className="text-sm font-medium">Flor Local</span>
-                        {totalLocal > 0 && (
+                        {/* Ocultar badge de total para digitadores */}
+                        {!isDataEntryUser && totalLocal > 0 && (
                             <Badge className="bg-amber-100 text-xs text-amber-700">{totalLocal}</Badge>
                         )}
                     </div>
