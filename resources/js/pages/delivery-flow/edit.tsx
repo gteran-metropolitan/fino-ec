@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
+import { formatDateEC } from '@/lib/date-utils';
 import { type BreadcrumbItem } from '@/types';
 
 interface Supplier {
@@ -37,10 +38,10 @@ export default function EditDeliveryFlow({ group, suppliers }: Props) {
         { title: `Editar Entrega #${group.id}`, href: `/delivery-flow/${group.id}/edit` },
     ];
 
-    // Parsear fecha y hora
-    const entryDate = new Date(group.entry_datetime);
-    const dateStr = entryDate.toISOString().split('T')[0];
-    const timeStr = entryDate.toTimeString().slice(0, 5);
+    // Parsear fecha y hora en zona horaria de Ecuador
+    const formattedDate = formatDateEC(group.entry_datetime);
+    const dateStr = formattedDate.inputDate;
+    const timeStr = formattedDate.inputTime;
 
     const { data, setData, patch, processing, errors } = useForm({
         supplier_id: group.supplier_id.toString(),

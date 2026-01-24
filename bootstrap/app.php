@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\DenyDataEntryUser;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
@@ -39,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'super_admin' => EnsureSuperAdmin::class,
             'active' => EnsureUserIsActive::class,
+            'deny_data_entry' => DenyDataEntryUser::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

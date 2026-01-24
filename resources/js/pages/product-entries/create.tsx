@@ -14,6 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
+import { getTodayEC } from '@/lib/date-utils';
 import { type BreadcrumbItem } from '@/types';
 
 interface SupplierVariety {
@@ -82,19 +83,8 @@ export default function CreateProductEntry({ suppliers, speciesList, varietiesLi
     const [showSpeciesSuggestions, setShowSpeciesSuggestions] = useState<{ [key: number]: boolean }>({});
     const [showVarietySuggestions, setShowVarietySuggestions] = useState<{ [key: number]: boolean }>({});
 
-    // Obtener fecha y hora de Ecuador (UTC-5)
-    const getEcuadorDateTime = () => {
-        const now = new Date();
-        const ecuadorOffset = -5 * 60; // UTC-5 en minutos
-        const localOffset = now.getTimezoneOffset();
-        const ecuadorTime = new Date(now.getTime() + (localOffset + ecuadorOffset) * 60000);
-        return {
-            date: ecuadorTime.toISOString().split('T')[0],
-            time: ecuadorTime.toTimeString().slice(0, 5),
-        };
-    };
-
-    const ecuadorNow = getEcuadorDateTime();
+    // Obtener fecha y hora de Ecuador (America/Guayaquil)
+    const ecuadorNow = getTodayEC();
 
     const { data, setData, post, processing, errors } = useForm({
         supplier_id: '',
