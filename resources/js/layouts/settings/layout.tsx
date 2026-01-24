@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
 import Heading from '@/components/heading';
@@ -8,11 +8,11 @@ import { useActiveUrl } from '@/hooks/use-active-url';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit } from '@/routes/profile';
-import { show } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
-import { type NavItem } from '@/types';
+import { type NavItem, type SharedData } from '@/types';
 
-const sidebarNavItems: NavItem[] = [
+// Items de navegación para usuarios normales
+const allNavItems: NavItem[] = [
     {
         title: 'Perfil',
         href: edit(),
@@ -30,8 +30,26 @@ const sidebarNavItems: NavItem[] = [
     },
 ];
 
+// Items de navegación para digitadores (solo vista)
+const dataEntryNavItems: NavItem[] = [
+    {
+        title: 'Perfil',
+        href: edit(),
+        icon: null,
+    },
+    {
+        title: 'Apariencia',
+        href: editAppearance(),
+        icon: null,
+    },
+];
+
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { urlIsActive } = useActiveUrl();
+    const { isDataEntryUser } = usePage<SharedData>().props;
+
+    // Seleccionar items según el rol
+    const sidebarNavItems = isDataEntryUser ? dataEntryNavItems : allNavItems;
 
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {

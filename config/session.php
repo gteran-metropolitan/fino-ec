@@ -30,6 +30,8 @@ return [
     | to expire immediately when the browser is closed then you may
     | indicate that via the expire_on_close configuration option.
     |
+    | Configurado para 30 días (43200 minutos) para mantener la sesión activa.
+    |
     */
 
     'lifetime' => (int) env('SESSION_LIFETIME', 120),

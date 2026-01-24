@@ -1,106 +1,158 @@
 /**
- * Utilidades de fecha para Ecuador (America/Guayaquil - UTC-5)
- * Usa date-fns para formateo consistente
+ * =====================================================
+ * 📅 UTILIDADES DE FECHA - ZONA HORARIA ECUADOR
+ * =====================================================
+ *
+ * Este archivo centraliza todo el manejo de fechas del sistema.
+ * SIEMPRE usa la zona horaria de Ecuador (America/Guayaquil),
+ * sin importar dónde esté el navegador del usuario.
+ *
+ * Usa la librería date-fns-tz para conversiones de zona horaria.
  */
 
-import { format, isToday, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 
-const TIMEZONE = 'America/Guayaquil';
+// =====================================================
+// ⚙️ CONFIGURACIÓN
+// =====================================================
 
-export interface FormattedDate {
-    /** Formato corto: "20/01/2026, 10:30 AM" */
-    short: string;
-    /** Formato largo: "lunes, 20 de enero de 2026" */
-    long: string;
-    /** Solo hora: "10:30 AM" */
-    time: string;
-    /** Solo fecha: "20/01/2026" */
-    dateOnly: string;
-    /** Fecha para input type="date": "2026-01-20" */
-    inputDate: string;
-    /** Hora para input type="time": "10:30" */
-    inputTime: string;
+const ECUADOR_TIMEZONE = 'America/Guayaquil';
+
+// Formatos de fecha reutilizables
+const FORMATS = {
+    inputDate: 'yyyy-MM-dd',        // Para <input type="date">
+    inputTime: 'HH:mm',             // Para <input type="time">
+    dateShort: 'dd/MM/yyyy',        // 23/01/2026
+    dateTime: 'dd/MM/yyyy, hh:mm a', // 23/01/2026, 10:30 AM
+    dateLong: "EEEE, d 'de' MMMM 'de' yyyy", // lunes, 23 de enero de 2026
+    time: 'hh:mm a',                // 10:30 AM
+};
+
+// =====================================================
+// 🔧 HELPERS INTERNOS
+// =====================================================
+
+/** Convierte string o Date a objeto Date */
+function toDate(value: string | Date): Date {
+    return typeof value === 'string' ? parseISO(value) : value;
 }
 
+/** Formatea una fecha en la zona horaria de Ecuador */
+function formatEC(date: Date, format: string): string {
+    return formatInTimeZone(date, ECUADOR_TIMEZONE, format, { locale: es });
+}
+
+// =====================================================
+// 📤 TIPOS EXPORTADOS
+// =====================================================
+
+export interface FormattedDate {
+    short: string;     // "23/01/2026, 10:30 AM"
+    long: string;      // "lunes, 23 de enero de 2026"
+    time: string;      // "10:30 AM"
+    dateOnly: string;  // "23/01/2026"
+    inputDate: string; // "2026-01-23" (para inputs)
+    inputTime: string; // "10:30" (para inputs)
+}
+
+// =====================================================
+// 📤 FUNCIONES EXPORTADAS
+// =====================================================
+
 /**
- * Formatear una fecha a varios formatos con zona horaria de Ecuador
+ * Formatea una fecha en múltiples formatos útiles
+ *
+ * @example
+ * const fecha = formatDateEC('2026-01-23T10:30:00');
+ * fecha.short     // "23/01/2026, 10:30 AM"
+ * fecha.inputDate // "2026-01-23"
  */
 export function formatDateEC(dateString: string | Date): FormattedDate {
-    const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+    const date = toDate(dateString);
 
     return {
-        short: formatInTimeZone(date, TIMEZONE, "dd/MM/yyyy, hh:mm a", { locale: es }),
-        long: formatInTimeZone(date, TIMEZONE, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es }),
-        time: formatInTimeZone(date, TIMEZONE, "hh:mm a", { locale: es }),
-        dateOnly: formatInTimeZone(date, TIMEZONE, "dd/MM/yyyy", { locale: es }),
-        inputDate: formatInTimeZone(date, TIMEZONE, "yyyy-MM-dd"),
-        inputTime: formatInTimeZone(date, TIMEZONE, "HH:mm"),
+        short: formatEC(date, FORMATS.dateTime),
+        long: formatEC(date, FORMATS.dateLong),
+        time: formatEC(date, FORMATS.time),
+        dateOnly: formatEC(date, FORMATS.dateShort),
+        inputDate: formatEC(date, FORMATS.inputDate),
+        inputTime: formatEC(date, FORMATS.inputTime),
     };
 }
 
 /**
- * Obtener fecha y hora actual de Ecuador para inputs
+ * Obtiene la fecha y hora ACTUAL de Ecuador
+ * Útil para precargar inputs de fecha/hora
+ *
+ * @example
+ * const ahora = getTodayEC();
+ * ahora.date // "2026-01-23"
+ * ahora.time // "10:30"
  */
 export function getTodayEC(): { date: string; time: string; full: string } {
     const now = new Date();
 
     return {
-        date: formatInTimeZone(now, TIMEZONE, "yyyy-MM-dd"),
-        time: formatInTimeZone(now, TIMEZONE, "HH:mm"),
-        full: formatInTimeZone(now, TIMEZONE, "dd/MM/yyyy, hh:mm a", { locale: es }),
+        date: formatEC(now, FORMATS.inputDate),
+        time: formatEC(now, FORMATS.inputTime),
+        full: formatEC(now, FORMATS.dateTime),
     };
 }
 
 /**
- * Obtener la fecha actual en Ecuador como objeto Date
- */
-export function getNowEC(): Date {
-    return toZonedTime(new Date(), TIMEZONE);
-}
-
-/**
- * Verificar si una fecha es del día actual en Ecuador
+ * Verifica si una fecha es del día de HOY en Ecuador
+ *
+ * @example
+ * isTodayEC('2026-01-23T10:00:00') // true si hoy es 23 de enero
  */
 export function isTodayEC(dateString: string | Date): boolean {
-    const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
-    const zonedDate = toZonedTime(date, TIMEZONE);
-    const zonedNow = toZonedTime(new Date(), TIMEZONE);
+    const date = toDate(dateString);
+    const zonedDate = toZonedTime(date, ECUADOR_TIMEZONE);
+    const zonedNow = toZonedTime(new Date(), ECUADOR_TIMEZONE);
 
-    return (
-        zonedDate.getFullYear() === zonedNow.getFullYear() &&
-        zonedDate.getMonth() === zonedNow.getMonth() &&
-        zonedDate.getDate() === zonedNow.getDate()
-    );
+    const sameYear = zonedDate.getFullYear() === zonedNow.getFullYear();
+    const sameMonth = zonedDate.getMonth() === zonedNow.getMonth();
+    const sameDay = zonedDate.getDate() === zonedNow.getDate();
+
+    return sameYear && sameMonth && sameDay;
 }
 
 /**
- * Obtener el título del día actual formateado
- * Ejemplo: "lunes, 20 de enero de 2026"
+ * Obtiene el título del día actual
+ *
+ * @example
+ * getTodayTitleEC() // "lunes, 23 de enero de 2026"
  */
 export function getTodayTitleEC(): string {
-    return formatInTimeZone(new Date(), TIMEZONE, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
+    return formatEC(new Date(), FORMATS.dateLong);
 }
 
 /**
- * Formatear solo la hora con AM/PM
+ * Formatea solo la hora de una fecha
+ *
+ * @example
+ * formatTimeEC('2026-01-23T10:30:00') // "10:30 AM"
  */
 export function formatTimeEC(dateString: string | Date): string {
-    const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
-    return formatInTimeZone(date, TIMEZONE, "hh:mm a", { locale: es });
+    return formatEC(toDate(dateString), FORMATS.time);
 }
 
 /**
- * Formatear fecha relativa (hoy, ayer, etc.)
+ * Formatea fecha de forma relativa (muestra "Hoy" si es hoy)
+ *
+ * @example
+ * formatRelativeEC('2026-01-23T10:30:00')
+ * // Si es hoy: "Hoy, 10:30 AM"
+ * // Si no: "23/01/2026, 10:30 AM"
  */
 export function formatRelativeEC(dateString: string | Date): string {
-    const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
-    const zonedDate = toZonedTime(date, TIMEZONE);
+    const date = toDate(dateString);
 
     if (isTodayEC(date)) {
-        return `Hoy, ${formatInTimeZone(date, TIMEZONE, "hh:mm a", { locale: es })}`;
+        return `Hoy, ${formatEC(date, FORMATS.time)}`;
     }
 
-    return formatInTimeZone(date, TIMEZONE, "dd/MM/yyyy, hh:mm a", { locale: es });
+    return formatEC(date, FORMATS.dateTime);
 }
