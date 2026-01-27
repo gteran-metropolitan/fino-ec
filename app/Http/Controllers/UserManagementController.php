@@ -41,13 +41,41 @@ class UserManagementController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', Password::defaults(), 'confirmed'],
-            'role' => ['required', 'string', Rule::in(['admin', 'dataEntryUser'])],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $request->validate(
+            [
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+                'password' => ['required', 'string', Password::defaults(), 'confirmed'],
+                'role' => ['required', 'string', Rule::in(['admin', 'dataEntryUser'])],
+                'is_active' => ['boolean'],
+            ],
+            [
+                'name.required' => 'El nombre es obligatorio.',
+                'name.max' => 'El nombre no puede tener más de :max caracteres.',
+
+                'email.required' => 'El correo electrónico es obligatorio.',
+                'email.email' => 'Debe ingresar un correo electrónico válido.',
+                'email.max' => 'El correo electrónico no puede tener más de :max caracteres.',
+                'email.unique' => 'Este correo electrónico ya está registrado.',
+
+                'password.required' => 'La contraseña es obligatoria.',
+                'password.confirmed' => 'La confirmación de la contraseña no coincide.',
+                'password.min' => 'La contraseña debe tener al menos :min caracteres.',
+
+                'role.required' => 'El rol es obligatorio.',
+                'role.in' => 'El rol seleccionado no es válido.',
+
+                'is_active.boolean' => 'El estado activo debe ser verdadero o falso.',
+            ],
+            [
+                'name' => 'Nombre',
+                'email' => 'Correo electrónico',
+                'password' => 'Contraseña',
+                'password_confirmation' => 'Confirmación de contraseña',
+                'role' => 'Rol',
+                'is_active' => 'Estado activo',
+            ]
+        );
 
         User::create([
             'name' => $validated['name'],
@@ -83,13 +111,40 @@ class UserManagementController extends Controller
             abort(403, 'No puedes modificar al Super Admin.');
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'password' => ['nullable', 'string', Password::defaults(), 'confirmed'],
-            'role' => ['required', 'string', Rule::in(['super_admin', 'admin', 'dataEntryUser'])],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $request->validate(
+            [
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+                'password' => ['nullable', 'string', Password::defaults(), 'confirmed'],
+                'role' => ['required', 'string', Rule::in(['super_admin', 'admin', 'dataEntryUser'])],
+                'is_active' => ['boolean'],
+            ],
+            [
+                'name.required' => 'El nombre es obligatorio.',
+                'name.max' => 'El nombre no puede tener más de :max caracteres.',
+
+                'email.required' => 'El correo electrónico es obligatorio.',
+                'email.email' => 'Debe ingresar un correo electrónico válido.',
+                'email.max' => 'El correo electrónico no puede tener más de :max caracteres.',
+                'email.unique' => 'Este correo electrónico ya está registrado.',
+
+                'password.confirmed' => 'La confirmación de la contraseña no coincide.',
+                'password.min' => 'La contraseña debe tener al menos :min caracteres.',
+
+                'role.required' => 'El rol es obligatorio.',
+                'role.in' => 'El rol seleccionado no es válido.',
+
+                'is_active.boolean' => 'El estado activo debe ser verdadero o falso.',
+            ],
+            [
+                'name' => 'Nombre',
+                'email' => 'Correo electrónico',
+                'password' => 'Contraseña',
+                'password_confirmation' => 'Confirmación de contraseña',
+                'role' => 'Rol',
+                'is_active' => 'Estado activo',
+            ]
+        );
 
         // Solo super admin puede asignar role super_admin
         if ($validated['role'] === 'super_admin' && ! auth()->user()->isSuperAdmin()) {
